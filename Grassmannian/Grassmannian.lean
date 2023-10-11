@@ -602,6 +602,8 @@ lemma Grassmannian.map_comp {U : Type*} [AddCommGroup U] [Module K U] (f : V →
 
 /- Nonemptiness of the Grassmannian.-/
 
+variable (K V)
+
 lemma NonemptyGrassmannian_iff : Nonempty ({v : Fin r → V // LinearIndependent K v}) ↔ Nonempty (Grassmannian K V r) := by
   rw [←(nonempty_quotient_iff (grassmannianSetoid K V r))] 
   exact Equiv.nonempty_congr (QGrassmannianEquivGrassmannian K V r)
@@ -624,8 +626,7 @@ lemma NonemptyGrassmannian_of_finrank (hfinrank : r ≤ FiniteDimensional.finran
     rw [←NonemptyGrassmannian_iff]
     exact Nonempty.intro ⟨v, hv⟩
     
-
-
+variable {K V r}
 
 /- Topologies. -/
 

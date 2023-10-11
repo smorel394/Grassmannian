@@ -190,6 +190,7 @@ lemma GoodsetIsOpen_aux1 (φ : E →L[𝕜] (Fin r → 𝕜)) : IsOpen {v : Fin 
   . apply Pi.continuous_postcomp φ.continuous
   . exact isOpen_setOf_linearIndependent 
 
+
 lemma GoodsetIsOpen_aux2 (φ : E →L[𝕜] (Fin r → 𝕜)) : IsOpen {v : {v : Fin r → E // LinearIndependent 𝕜 v} 
 | LinearIndependent 𝕜 (φ ∘ v.1)} := by --sorry
   have heq : {v : {v : Fin r → E // LinearIndependent 𝕜 v} | LinearIndependent 𝕜 (φ ∘ v.1)} = 
@@ -203,6 +204,7 @@ lemma GoodsetIsOpen_aux2 (φ : E →L[𝕜] (Fin r → 𝕜)) : IsOpen {v : {v :
     . apply Pi.continuous_postcomp φ.continuous 
     . exact continuous_subtype_val
   . exact isOpen_setOf_linearIndependent  
+
 
 
 lemma GoodsetIsOpen (φ : E →L[𝕜] (Fin r → 𝕜)) : IsOpen (Goodset (φ : E →ₗ[𝕜] Fin r → 𝕜)) := by --sorry
@@ -423,9 +425,15 @@ Chart φ (Grassmannian.mk 𝕜 v hv) = ChartLift φ v := by
   rw [ChartLift_vs_ChartAuxLift, ←ChartAuxLift.isLift]
   rfl 
 
+lemma ChartLift_isLift' (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) :
+(Chart φ) ∘ (Grassmannian.mk' 𝕜) = (ChartLift φ) ∘ (fun v => v.1) := by 
+  apply funext 
+  intro v 
+  simp only [Function.comp_apply, mk'_eq_mk]
+  rw [ChartLift_isLift]
+
 
 /- Definition of the inverse chart.-/
-
 
 def InverseChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) : ((Fin r → 𝕜) →L[𝕜] U) → Grassmannian 𝕜 E r := by  
   intro f 
@@ -536,6 +544,10 @@ InverseChart φ f = Grassmannian.mk 𝕜 (InverseChartLift φ f) (InverseChartLi
   apply congrArg
   rw [Basis.span_eq]
 
+def InverseChartLift_codRestrict (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) :
+((Fin r → 𝕜) →L[𝕜] U) → {v : Fin r → E // LinearIndependent 𝕜 v} :=
+Set.codRestrict (InverseChartLift φ) {v : Fin r → E | LinearIndependent 𝕜 v} 
+(fun f => InverseChartLift_codomain' φ f)
 
 
 /- We prove that the charts are inverses.-/
@@ -634,6 +646,23 @@ Chart φ (InverseChart φ f) = f := by --sorry
   . change _ ∈ Submodule.map φ.symm (LinearMap.graph f)
     unfold InverseChart
     simp only [SetLike.coe_mem]
+
+
+lemma QuotientInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) (v : {v : Fin r → E // LinearIndependent 𝕜 v}) 
+(hv : LinearIndependent 𝕜 (((ContinuousLinearMap.fst 𝕜 (Fin r → 𝕜) U).comp φ.toContinuousLinearMap) ∘ v.1))  :
+(Grassmannian.mk' 𝕜) v = ((InverseChart φ) ∘ (ChartLift φ) ∘ (fun v => v.1)) v := by 
+  have hgood : Grassmannian.mk' 𝕜 v ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp φ.toContinuousLinearMap) := by
+    rw [Grassmannian.mk'_eq_mk, GoodsetPreimage]
+    exact hv 
+  conv => lhs 
+          rw [←(InverseChartChart φ hgood)]
+  simp only [mk'_eq_mk, Function.comp_apply]
+  rw [ChartLift_isLift]
+
+lemma IdInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) {W : Grassmannian 𝕜 E r} 
+(hW : W ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp φ.toContinuousLinearMap)) :
+W = ((Grassmannian.mk' 𝕜) ∘ (InverseChartLift_codRestrict φ) ∘ (Chart φ)) W := sorry 
+
 
 
 /- Definition of the chart as LocalEquiv.-/

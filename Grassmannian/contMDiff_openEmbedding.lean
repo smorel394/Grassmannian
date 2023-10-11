@@ -11,7 +11,7 @@ variable {𝕜: Type u_1} {E : Type u_2} [NontriviallyNormedField 𝕜] [NormedA
 {α : Type u_8} [TopologicalSpace α] [Nonempty α] {j : α → E'} (h : OpenEmbedding j) 
 
 
-lemma truc (f : M → α) :
+lemma ContMDiff_vs_openEmbedding (f : M → α) :
 @ContMDiff 𝕜 _ E _ _ H _ I M _ _ E' _ _ E' _ (modelWithCornersSelf 𝕜 E') α _ 
 (OpenEmbedding.singletonChartedSpace h) n f ↔ ContMDiff I (modelWithCornersSelf 𝕜 E') (E' := E') 
 (H' := E') n (j ∘ f) := by 
@@ -60,4 +60,14 @@ lemma truc (f : M → α) :
       simp only [Set.mem_univ, Set.mem_preimage, Function.comp_apply, Set.mem_range, exists_apply_eq_apply,
         forall_true_left]
 
-    
+
+lemma contMdiffOpenEmbedding : @ContMDiff 𝕜 _ E' _ _ E' _ (modelWithCornersSelf 𝕜 E') α _ 
+(OpenEmbedding.singletonChartedSpace h) E' _ _ E' _ (modelWithCornersSelf 𝕜 E') E' _ _ n j := by 
+  letI : ChartedSpace E' α := OpenEmbedding.singletonChartedSpace h 
+  have ha := @ContMDiff_vs_openEmbedding 𝕜 E' _ _ _ E' _ (modelWithCornersSelf 𝕜 E') α _ _ 
+    E' _ _ α _ _ j h n (fun (x : α) => (x : α))  
+  have heq : j ∘ (fun x => x) = j := by ext x; simp only [Function.comp_apply]
+  rw [heq] at ha 
+  rw [←ha]
+  exact contMDiff_id 
+  
