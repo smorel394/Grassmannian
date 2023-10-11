@@ -599,6 +599,34 @@ lemma Grassmannian.map_comp {U : Type*} [AddCommGroup U] [Module K U] (f : V →
     Submodule.map_comp]
 
 
+
+/- Nonemptiness of the Grassmannian.-/
+
+lemma NonemptyGrassmannian_iff : Nonempty ({v : Fin r → V // LinearIndependent K v}) ↔ Nonempty (Grassmannian K V r) := by
+  rw [←(nonempty_quotient_iff (grassmannianSetoid K V r))] 
+  exact Equiv.nonempty_congr (QGrassmannianEquivGrassmannian K V r)
+
+lemma NonemptyGrassmannian_of_finrank (hfinrank : r ≤ FiniteDimensional.finrank K V) : Nonempty (Grassmannian K V r) := by
+  by_cases hr : r = 0
+  . rw [hr]
+    set W : Submodule K V := ⊥
+    have hW1 : FiniteDimensional K W := inferInstance 
+    have hW2 : FiniteDimensional.finrank K W = 0 := finrank_bot K V
+    exact Nonempty.intro ⟨W, hW1, hW2⟩ 
+  . rw [←(Nat.succ_pred hr), Nat.succ_le_iff] at hfinrank
+    have hrank := Order.succ_le_of_lt (FiniteDimensional.lt_rank_of_lt_finrank hfinrank)
+    rw [←Cardinal.nat_succ, Nat.succ_pred hr, le_rank_iff_exists_linearIndependent_finset] at hrank
+    obtain ⟨s, hsr, hslin⟩ := hrank
+    set v : Fin r → V := fun i => (Finset.equivFinOfCardEq hsr).symm i 
+    have hv : LinearIndependent K v := by
+      apply LinearIndependent.comp hslin 
+      apply Equiv.injective   
+    rw [←NonemptyGrassmannian_iff]
+    exact Nonempty.intro ⟨v, hv⟩
+    
+
+
+
 /- Topologies. -/
 
 variable {𝕜 E : Type*} [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [Module 𝕜 E] [BoundedSMul 𝕜 E]
