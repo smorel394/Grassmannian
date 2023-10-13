@@ -648,6 +648,8 @@ Chart φ (InverseChart φ f) = f := by --sorry
     simp only [SetLike.coe_mem]
 
 
+/- Some lemmas for later.-/
+
 lemma QuotientInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) (v : {v : Fin r → E // LinearIndependent 𝕜 v}) 
 (hv : LinearIndependent 𝕜 (((ContinuousLinearMap.fst 𝕜 (Fin r → 𝕜) U).comp φ.toContinuousLinearMap) ∘ v.1))  :
 (Grassmannian.mk' 𝕜) v = ((InverseChart φ) ∘ (ChartLift φ) ∘ (fun v => v.1)) v := by 
@@ -663,7 +665,95 @@ lemma IdInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) {W : Grassmannian 𝕜
 (hW : W ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp φ.toContinuousLinearMap)) :
 W = ((Grassmannian.mk' 𝕜) ∘ (InverseChartLift_codRestrict φ) ∘ (Chart φ)) W := sorry 
 
-
+lemma ChoiceOfChart (ψ : E ≃L[𝕜] (Fin r → 𝕜) × U) (v : {v : Fin r → E // LinearIndependent 𝕜 v}) 
+(hψ : (Grassmannian.mk' 𝕜 v) ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp ψ.toContinuousLinearMap)) :
+∃ (φ : E ≃L[𝕜] (Fin r → 𝕜) × U), ((Grassmannian.mk' 𝕜 v) ∈ Goodset
+((ContinuousLinearMap.fst 𝕜 (Fin r → 𝕜) _).comp φ.toContinuousLinearMap) ∧
+((InverseChartLift_codRestrict φ) ∘ (Chart φ) ∘ (Grassmannian.mk' 𝕜)) v = v) := by 
+  set ψ₁ := (ContinuousLinearMap.fst 𝕜 _ _).comp ψ.toContinuousLinearMap
+  set ψ₂ := (ContinuousLinearMap.snd 𝕜 _ _).comp ψ.toContinuousLinearMap with hψ₂def
+  rw [Grassmannian.mk'_eq_mk, GoodsetPreimage] at hψ
+  set b : Fin r → (Fin r → 𝕜) := ψ₁ ∘ v.1 
+  have hblin : LinearIndependent 𝕜 b := hψ 
+  have hbspan : ⊤ ≤ Submodule.span 𝕜 (Set.range b) := by
+    have heq : Set.range b = ψ₁ '' (Set.range v.1) := by
+      rw [Set.range_comp] 
+    rw [heq, Submodule.span_image]
+    rw [GoodsetPreimage_iff_equiv] at hψ 
+    have ha := hψ.2 
+    rw [←LinearMap.range_eq_top] at ha 
+    erw [LinearMap.range_comp] at ha 
+    rw [Submodule.range_subtype] at ha 
+    erw [ha]
+  set basis := Basis.mk hblin hbspan 
+  set f := (Basis.equiv basis (Pi.basisFun 𝕜 (Fin r)) (Equiv.refl _)).toContinuousLinearEquiv 
+  set φ := ContinuousLinearEquiv.trans ψ (ContinuousLinearEquiv.prod f (ContinuousLinearEquiv.refl 𝕜 _)) with hφdef
+  set φ₁ := (ContinuousLinearMap.fst 𝕜 _ _).comp φ.toContinuousLinearMap
+  set φ₂ := (ContinuousLinearMap.snd 𝕜 _ _).comp φ.toContinuousLinearMap with hφ₂def
+  have hφ₁ : φ₁ = ContinuousLinearMap.comp f ψ₁ := by
+    apply ContinuousLinearMap.ext; intro u
+    rw [ContinuousLinearMap.coe_comp', Function.comp_apply, ContinuousLinearMap.coe_comp', 
+        ContinuousLinearMap.coe_comp', Function.comp_apply, Function.comp_apply]
+    erw [ContinuousLinearEquiv.trans_apply]
+    rw [ContinuousLinearEquiv.prod_apply, ContinuousLinearMap.coe_fst', ContinuousLinearEquiv.coe_refl', id_eq]
+    simp only [mk'_eq_mk, ContinuousLinearMap.coe_comp', ContinuousLinearEquiv.coe_coe,
+        ContinuousLinearEquiv.trans_apply, LinearEquiv.coe_toContinuousLinearEquiv']
+  have hφ₂ : φ₂ = ψ₂ := by
+    apply ContinuousLinearMap.ext; intro u
+    rw [ContinuousLinearMap.coe_comp', Function.comp_apply, ContinuousLinearMap.coe_comp', Function.comp_apply]
+    erw [ContinuousLinearEquiv.trans_apply]
+    rw [ContinuousLinearEquiv.prod_apply, ContinuousLinearMap.coe_snd', ContinuousLinearEquiv.coe_refl', id_eq]
+    rfl
+  existsi φ
+  have hφ : (Grassmannian.mk' 𝕜 v) ∈ Goodset φ₁ := by
+    rw [hφ₁, Grassmannian.mk'_eq_mk, GoodsetPreimage, ContinuousLinearMap.coe_comp, LinearMap.coe_comp]
+    apply LinearIndependent.map' hψ 
+    simp only [mk'_eq_mk, ContinuousLinearMap.coe_comp', ContinuousLinearEquiv.coe_coe, Function.comp_apply,
+      ContinuousLinearEquiv.trans_apply, LinearEquiv.coe_toContinuousLinearEquiv, LinearEquiv.ker] 
+  rw [and_iff_right hφ]
+  set W := Grassmannian.mk' 𝕜 v with hWdef
+  have hv : ∀ (i : Fin r), v.1 i ∈ W.1 := by 
+    intro i
+    rw [hWdef, Grassmannian.mk'_eq_mk, Grassmannian.mk_apply]
+    apply Submodule.subset_span
+    simp only [Set.mem_range, exists_apply_eq_apply]
+  have h1 : ∀ (i : Fin r), Pi.basisFun 𝕜 (Fin r) i = f (ψ₁ (v.1 i)) := by
+    intro i
+    rw [LinearEquiv.coe_toContinuousLinearEquiv']
+    rw [←(Function.comp_apply (f := ψ₁) (g := v.1))]
+    change _ = (Basis.equiv basis (Pi.basisFun 𝕜 (Fin r)) (Equiv.refl (Fin r))) (b i)
+    rw [←(Basis.mk_apply hblin hbspan)]
+    rw [Basis.equiv_apply basis i (Pi.basisFun 𝕜 (Fin r)), Equiv.refl_apply] 
+  have h2 : ∀ (i : Fin r), (Chart φ W) (Pi.basisFun 𝕜 (Fin r) i) = ψ₂ (v.1 i) := by
+    intro i
+    unfold Chart ChartAux 
+    simp only [hφ, dite_true]
+    simp_rw [←hφdef]
+    have h1' : Pi.basisFun 𝕜 (Fin r) i = φ₁.domRestrict W.1 ⟨v.1 i, hv i⟩ := by
+      rw [h1 i, LinearMap.domRestrict_apply]
+      rw [hφ₁, ContinuousLinearMap.coe_comp, LinearMap.coe_comp, Function.comp_apply]
+      rfl 
+    rw [h1', ←hφ₂def, hφ₂, ContinuousLinearMap.coe_comp', ContinuousLinearMap.coe_comp', Function.comp_apply,
+      Function.comp_apply, ContinuousLinearMap.coe_comp', Function.comp_apply, Function.comp_apply]   
+    letI := W.2.1 
+    erw [LinearEquiv.coe_toContinuousLinearEquiv_symm']
+    rw [Goodset_iff_equiv] at hφ
+    rw [←LinearEquiv.ofBijective_apply, LinearEquiv.symm_apply_apply, Submodule.subtypeL_apply]
+  ext i
+  unfold InverseChartLift_codRestrict 
+  rw [Function.comp_apply, Function.comp_apply, Set.val_codRestrict_apply]
+  unfold InverseChartLift
+  rw [Function.comp_apply, Function.comp_apply, ContinuousLinearMap.prod_apply, h2, 
+    ContinuousLinearMap.id_apply, h1, ContinuousLinearEquiv.symm_trans_apply, ContinuousLinearEquiv.prod_symm]
+  rw [ContinuousLinearEquiv.refl_symm, ContinuousLinearEquiv.prod_apply, ContinuousLinearEquiv.coe_refl', id_eq]
+  rw [ContinuousLinearEquiv.symm_apply_apply]
+  change ψ.symm (ψ₁ (v.1 i), ψ₂ (v.1 i)) = _ 
+  rw [ContinuousLinearMap.coe_comp', Function.comp_apply, ContinuousLinearMap.coe_fst']
+  rw [ContinuousLinearMap.coe_comp', Function.comp_apply, ContinuousLinearMap.coe_snd']
+  rw [Prod.mk.eta]
+  change ψ.symm (ψ (v.1 i)) = _ 
+  rw [ContinuousLinearEquiv.symm_apply_apply]
+ 
 
 /- Definition of the chart as LocalEquiv.-/
 
