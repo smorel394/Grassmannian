@@ -663,7 +663,12 @@ lemma QuotientInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) (v : {v : Fin r 
 
 lemma IdInChart (φ : E ≃L[𝕜] (Fin r → 𝕜) × U) {W : Grassmannian 𝕜 E r} 
 (hW : W ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp φ.toContinuousLinearMap)) :
-W = ((Grassmannian.mk' 𝕜) ∘ (InverseChartLift_codRestrict φ) ∘ (Chart φ)) W := sorry 
+W = ((Grassmannian.mk' 𝕜) ∘ (InverseChartLift_codRestrict φ) ∘ (Chart φ)) W := by
+  unfold InverseChartLift_codRestrict 
+  simp only [Function.comp_apply, mk'_eq_mk, Set.val_codRestrict_apply]
+  rw [←InverseChartLift_isLift, InverseChartChart]
+  exact hW 
+
 
 lemma ChoiceOfChart (ψ : E ≃L[𝕜] (Fin r → 𝕜) × U) (v : {v : Fin r → E // LinearIndependent 𝕜 v}) 
 (hψ : (Grassmannian.mk' 𝕜 v) ∈ Goodset ((ContinuousLinearMap.fst 𝕜 _ _).comp ψ.toContinuousLinearMap)) :

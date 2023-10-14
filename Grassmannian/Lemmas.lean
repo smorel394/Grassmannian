@@ -1,6 +1,8 @@
 import Mathlib.Tactic
 import Mathlib.LinearAlgebra.Basis
 import Mathlib.Analysis.Calculus.ContDiffDef
+import Mathlib.Geometry.Manifold.ContMDiff
+
 
 
 lemma Basis.constr_ker {ι : Type u_1} {R : Type u_3} {M : Type u_6} {M' : Type u_7} [Semiring R] 
@@ -78,3 +80,44 @@ ContDiffOn 𝕜 n f s ↔ ∀ (x : s), ContDiffAt 𝕜 n f x := by
     obtain ⟨m, hm⟩ := hn
     rw [←hm]
     exact contDiffOn_open_iff_contDiffAt_finite hs 
+
+lemma contMDiff_of_contMDiffAt {𝕜 : Type u_1} [NontriviallyNormedField 𝕜] {E : Type u_2} [NormedAddCommGroup E] 
+[NormedSpace 𝕜 E] {H : Type u_3} [TopologicalSpace H] (I : ModelWithCorners 𝕜 E H) {M : Type u_4} 
+[TopologicalSpace M] [ChartedSpace H M] [SmoothManifoldWithCorners I M] {E' : Type u_5} [NormedAddCommGroup E'] 
+[NormedSpace 𝕜 E'] {H' : Type u_6} [TopologicalSpace H'] (I' : ModelWithCorners 𝕜 E' H') {M' : Type u_7} 
+[TopologicalSpace M'] [ChartedSpace H' M'] [SmoothManifoldWithCorners I' M'] (n : ℕ) (f : M → M') 
+(hdiff : ∀ (x : M), ContMDiffAt I I' n f x) :
+ContMDiff I I' n f := by
+  apply contMDiff_of_locally_contMDiffOn
+  intro x 
+  obtain ⟨s, hs1, hs2⟩ := contMDiffAt_iff_contMDiffOn_nhds.mp (hdiff x)
+  obtain ⟨U, hUs, hUopen, hUx⟩:= mem_nhds_iff.mp hs1
+  existsi U 
+  rw [and_iff_right hUopen, and_iff_right hUx]
+  exact ContMDiffOn.mono hs2 hUs 
+
+
+lemma contMDiff_iff_contMDiffAt {𝕜 : Type u_1} [NontriviallyNormedField 𝕜] {E : Type u_2} [NormedAddCommGroup E] 
+[NormedSpace 𝕜 E] {H : Type u_3} [TopologicalSpace H] (I : ModelWithCorners 𝕜 E H) {M : Type u_4} 
+[TopologicalSpace M] [ChartedSpace H M] [SmoothManifoldWithCorners I M] {E' : Type u_5} [NormedAddCommGroup E'] 
+[NormedSpace 𝕜 E'] {H' : Type u_6} [TopologicalSpace H'] (I' : ModelWithCorners 𝕜 E' H') {M' : Type u_7} 
+[TopologicalSpace M'] [ChartedSpace H' M'] [SmoothManifoldWithCorners I' M'] (n : ℕ∞) (f : M → M') :
+ContMDiff I I' n f ↔ ∀ (x : M), ContMDiffAt I I' n f x := by
+  constructor 
+  . exact fun hdiff _ => ContMDiff.contMDiffAt hdiff 
+  . intro hdiff
+    by_cases htop : n = ⊤ 
+    . rw [htop] at hdiff ⊢
+      change Smooth _ _ _ 
+      rw [contMDiff_top]
+      intro m 
+      apply contMDiff_of_contMDiffAt 
+      intro x
+      apply ContMDiffAt.of_le (hdiff x) le_top
+    . rw [←ne_eq, WithTop.ne_top_iff_exists] at htop 
+      obtain ⟨m, hm⟩ := htop
+      rw [←hm] at hdiff ⊢
+      apply contMDiff_of_contMDiffAt 
+      intro x
+      apply ContMDiffAt.of_le (hdiff x) (le_refl _)
+
