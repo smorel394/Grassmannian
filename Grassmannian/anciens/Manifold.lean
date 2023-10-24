@@ -206,7 +206,7 @@ smoothManifoldWithCorners_of_contDiffOn (ModelGrassmannian 𝕜 (ModelSpace 𝕜
 Nonempty instance on that type.-/
 
 instance instNonemptyGrassmannianLift : Nonempty {v : Fin r → E // LinearIndependent 𝕜 v} := 
-(NonemptyGrassmannian_iff' 𝕜 E r).mpr inferInstance 
+(NonemptyGrassmannian_iff 𝕜 E r).mpr inferInstance 
 
 variable (𝕜 E r)
 
