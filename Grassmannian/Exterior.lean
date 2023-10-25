@@ -4,7 +4,8 @@ import Mathlib.LinearAlgebra.ExteriorAlgebra.OfAlternating
 
 
 
-variable (R M N : Type*) [CommRing R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N] (n : ℕ)
+variable (R M N N' : Type*) [CommRing R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N] 
+  [AddCommGroup N'] [Module R N'] (n : ℕ)
 
 abbrev ExteriorAlgebra.GradedPiece := (LinearMap.range (ExteriorAlgebra.ι R : M →ₗ[R] ExteriorAlgebra R M) ^ n) 
 
@@ -18,15 +19,16 @@ def ExteriorAlgebra.GradedPiece.Finite [Module.Finite R M]: Module.Finite R
   rw [←Module.finite_def]
   exact inferInstance 
 
-variable {R M N}
+variable {R M N N'}
 
 def ExteriorAlgebra.GradedPiece.liftAlternating_aux : (AlternatingMap R M N (Fin n)) →ₗ[R] 
 ((i : ℕ) → AlternatingMap R M N (Fin i)) := by
   apply LinearMap.pi
   intro i
-  by_cases hi : i = n 
-  . rw [hi]; exact LinearMap.id 
+  by_cases h : i = n 
+  . rw [h]; exact LinearMap.id 
   . exact 0 
+
 
 def ExteriorAlgebra.GradedPiece.liftAlternating : (AlternatingMap R M N (Fin n)) →ₗ[R] 
 ExteriorAlgebra.GradedPiece R M n →ₗ[R] N := by
@@ -102,6 +104,23 @@ Submodule.span R (Set.range (ExteriorAlgebra.ιMulti_fixedDegree R n)) =
   simp only [Submodule.coeSubtype, ιMulti_fixedDegree_apply, Set.image_univ, Submodule.map_top, Submodule.range_subtype]
   exact ExteriorAlgebra.ιMulti_span_range R n 
 
+@[ext]
+lemma ExteriorAlgebra.GradedPiece.lhom_ext ⦃f : ExteriorAlgebra.GradedPiece R M n →ₗ[R] N⦄
+⦃g : ExteriorAlgebra.GradedPiece R M n →ₗ[R] N⦄ 
+(heq : (LinearMap.compAlternatingMap f) (ExteriorAlgebra.ιMulti_fixedDegree R n) = 
+(LinearMap.compAlternatingMap g) (ExteriorAlgebra.ιMulti_fixedDegree R n)) : f = g := by
+  ext u
+  have hu : u ∈ (⊤ : Submodule R (ExteriorAlgebra.GradedPiece R M n)) := Submodule.mem_top   
+  rw [←ExteriorAlgebra.ιMulti_fixedDegree_span_range] at hu
+  apply Submodule.span_induction hu (p := fun u => f u = g u)
+  . intro _ h
+    rw [Set.mem_range] at h
+    obtain ⟨a, ha⟩ := h
+    apply_fun (fun F => F a) at heq; simp only [LinearMap.compAlternatingMap_apply] at heq 
+    rw [←ha, heq]
+  . rw [LinearMap.map_zero, LinearMap.map_zero]
+  . exact fun _ _ h h' => by rw [LinearMap.map_add, LinearMap.map_add, h, h']
+  . exact fun _ _ h => by rw [LinearMap.map_smul, LinearMap.map_smul, h] 
 
 
 /- Useless ? 
@@ -113,7 +132,7 @@ lemma ExteriorAlgebra.ιMulti_fixedDegree_submodule : LinearMap.compAlternatingM
   rw [ExteriorAlgebra.ιMulti_fixedDegree_apply]
 -/
 
-lemma ExteriorAlgebra.GradedPiece.liftAlternating_apply_ιMulti (f : AlternatingMap R M N (Fin n)) 
+@[simp] lemma ExteriorAlgebra.GradedPiece.liftAlternating_apply_ιMulti (f : AlternatingMap R M N (Fin n)) 
 (a : Fin n → M) :
 ExteriorAlgebra.GradedPiece.liftAlternating n f (ExteriorAlgebra.ιMulti_fixedDegree R n a) = f a := by
   unfold ExteriorAlgebra.GradedPiece.liftAlternating 
@@ -122,28 +141,52 @@ ExteriorAlgebra.GradedPiece.liftAlternating n f (ExteriorAlgebra.ιMulti_fixedDe
   unfold ExteriorAlgebra.GradedPiece.liftAlternating_aux
   simp only [eq_mpr_eq_cast, LinearMap.pi_apply, cast_eq, dite_eq_ite, ite_true, LinearMap.id_coe, id_eq]
 
-lemma ExteriorAlgebra.GradedPiece.liftAlternating_comp_ιMulti (f : AlternatingMap R M N (Fin n)) :
+/- Useless ?
+@[simp] lemma ExteriorAlgebra.GradedPiece.liftAlternating_apply_ιMulti_other {i : ℕ} (hi : i ≠ n)
+(f : AlternatingMap R M N (Fin n)) (a : Fin i → M) :
+ExteriorAlgebra.liftAlternating (ExteriorAlgebra.GradedPiece.liftAlternating_aux n f) 
+(ExteriorAlgebra.ιMulti_fixedDegree R i a) = 0 := by 
+  unfold ExteriorAlgebra.GradedPiece.liftAlternating_aux
+  simp only [eq_mpr_eq_cast, ιMulti_fixedDegree_apply, ExteriorAlgebra.liftAlternating_apply_ιMulti, LinearMap.pi_apply,
+    hi, dite_false, LinearMap.zero_apply, AlternatingMap.zero_apply] 
+-/
+
+@[simp] lemma ExteriorAlgebra.GradedPiece.liftAlternating_comp_ιMulti (f : AlternatingMap R M N (Fin n)) :
 (LinearMap.compAlternatingMap (ExteriorAlgebra.GradedPiece.liftAlternating n f)) 
 (ExteriorAlgebra.ιMulti_fixedDegree R n) = f := by
   ext a
   simp only [LinearMap.compAlternatingMap_apply]
   rw [ExteriorAlgebra.GradedPiece.liftAlternating_apply_ιMulti]
 
-lemma ExteriorAlgebra.GradedPiece.liftAlternating_ιMulti :
+/- Useless ?
+@[simp] lemma ExteriorAlgebra.GradedPiece.liftAlternating_comp_ιMulti_other {i : ℕ} (hi : i ≠ n)
+(f : AlternatingMap R M N (Fin n)) : LinearMap.compAlternatingMap
+(ExteriorAlgebra.liftAlternating (ExteriorAlgebra.GradedPiece.liftAlternating_aux n f)) 
+(ExteriorAlgebra.ιMulti R i) = 0 := by sorry
+-/
+
+@[simp] lemma ExteriorAlgebra.GradedPiece.liftAlternating_ιMulti :
 ExteriorAlgebra.GradedPiece.liftAlternating n (R := R) (M := M) (ExteriorAlgebra.ιMulti_fixedDegree R n) = LinearMap.id := by
   ext u 
-  have hu : u ∈ (⊤ : Submodule R (ExteriorAlgebra.GradedPiece R M n)) := Submodule.mem_top   
-  rw [←ExteriorAlgebra.ιMulti_fixedDegree_span_range] at hu
-  simp only [LinearMap.id_coe, id_eq, SetLike.coe_eq_coe]
-  apply Submodule.span_induction hu (p := fun u => ExteriorAlgebra.GradedPiece.liftAlternating 
-    n (R := R) (M := M) (ExteriorAlgebra.ιMulti_fixedDegree R n) u = u) 
-  . intro v hv
-    rw [Set.mem_range] at hv
-    obtain ⟨a, hav⟩ := hv
-    rw [←hav, ExteriorAlgebra.GradedPiece.liftAlternating_apply_ιMulti]
-  . rw [map_zero]
-  . intro v w hv hw
-    rw [map_add, hv, hw]
-  . intro a v hv
-    rw [map_smul, hv]
+  simp only [liftAlternating_comp_ιMulti, ιMulti_fixedDegree_apply, LinearMap.compAlternatingMap_apply,
+    LinearMap.id_coe, id_eq]
+
   
+@[simp]
+lemma ExteriorAlgebra.GradedPiece.liftAlternating_comp (g : N →ₗ[R] N') (f : AlternatingMap R M N (Fin n)) :
+ExteriorAlgebra.GradedPiece.liftAlternating n (LinearMap.compAlternatingMap g f) =   
+LinearMap.comp g (ExteriorAlgebra.GradedPiece.liftAlternating n f) := by
+  ext u
+  simp only [liftAlternating_comp_ιMulti, LinearMap.compAlternatingMap_apply, LinearMap.coe_comp, Function.comp_apply,
+    liftAlternating_apply_ιMulti]
+
+@[simps apply symm_apply]
+def ExteriorAlgebra.GradedPiece.liftAlternatingEquiv :
+AlternatingMap R M N (Fin n) ≃ₗ[R] ExteriorAlgebra.GradedPiece R M n →ₗ[R] N where
+toFun := ExteriorAlgebra.GradedPiece.liftAlternating n 
+map_add' := map_add _ 
+map_smul' := map_smul _ 
+invFun F := F.compAlternatingMap (ExteriorAlgebra.ιMulti_fixedDegree R n)
+left_inv f := ExteriorAlgebra.GradedPiece.liftAlternating_comp_ιMulti R n f 
+right_inv F := by ext u; simp only [liftAlternating_comp, liftAlternating_ιMulti, LinearMap.comp_id]
+
