@@ -1,6 +1,7 @@
 import Mathlib.Tactic
 import Mathlib.LinearAlgebra.ExteriorAlgebra.Grading
 import Mathlib.LinearAlgebra.ExteriorAlgebra.OfAlternating
+import Mathlib.LinearAlgebra.TensorPower
 
 
 
@@ -47,15 +48,21 @@ ExteriorAlgebra.GradedPiece R M n →ₗ[R] N := by
 
 variable (R)
 
-def ExteriorAlgebra.ιMulti_fixedDegree : AlternatingMap R M (ExteriorAlgebra.GradedPiece R M n) (Fin n) := by
-  apply AlternatingMap.codRestrict (ExteriorAlgebra.ιMulti R n) (ExteriorAlgebra.GradedPiece R M n)
-  intro a
+lemma ExteriorAlgebra.ιMulti_range : Set.range (ExteriorAlgebra.ιMulti R n) ⊆ 
+(ExteriorAlgebra.GradedPiece R M n : Set (ExteriorAlgebra R M)) := by
+  rw [Set.range_subset_iff]
+  intro v
   rw [ExteriorAlgebra.ιMulti_apply]
   apply Submodule.pow_subset_pow
   rw [Set.mem_pow]
-  existsi fun i => ⟨(ExteriorAlgebra.ι R) (a i), by simp only [SetLike.mem_coe, LinearMap.mem_range, ι_inj,
+  existsi fun i => ⟨(ExteriorAlgebra.ι R) (v i), by simp only [SetLike.mem_coe, LinearMap.mem_range, ι_inj,
     exists_eq]⟩
-  simp only
+  simp only 
+
+def ExteriorAlgebra.ιMulti_fixedDegree : AlternatingMap R M (ExteriorAlgebra.GradedPiece R M n) (Fin n) := by
+  apply AlternatingMap.codRestrict (ExteriorAlgebra.ιMulti R n) (ExteriorAlgebra.GradedPiece R M n)
+    (fun _ => ExteriorAlgebra.ιMulti_range R n (by simp only [Set.mem_range, exists_apply_eq_apply]))
+ 
 
 @[simp] lemma ExteriorAlgebra.ιMulti_fixedDegree_apply (a : Fin n → M) :
 ExteriorAlgebra.ιMulti_fixedDegree R n a = ExteriorAlgebra.ιMulti R n a := by
@@ -68,14 +75,7 @@ Submodule.span R (Set.range (ExteriorAlgebra.ιMulti R n)) =
 ExteriorAlgebra.GradedPiece R M n := by 
   apply le_antisymm
   . rw [Submodule.span_le]
-    intro u 
-    simp only [Set.mem_range, SetLike.mem_coe, forall_exists_index]
-    intro a hau
-    apply Submodule.pow_subset_pow
-    rw [Set.mem_pow, ←hau, ExteriorAlgebra.ιMulti_apply]
-    existsi fun i => ⟨ExteriorAlgebra.ι R (a i), by simp only [SetLike.mem_coe, LinearMap.mem_range, ι_inj,
-      exists_eq]⟩
-    simp only
+    apply le_trans (ExteriorAlgebra.ιMulti_range R n) (le_refl _)
   . change (LinearMap.range (ExteriorAlgebra.ι R : M →ₗ[R] ExteriorAlgebra R M) ^ n) ≤ _ 
     rw [Submodule.pow_eq_span_pow_set, Submodule.span_le]
     intro u hu
@@ -189,4 +189,162 @@ map_smul' := map_smul _
 invFun F := F.compAlternatingMap (ExteriorAlgebra.ιMulti_fixedDegree R n)
 left_inv f := ExteriorAlgebra.GradedPiece.liftAlternating_comp_ιMulti R n f 
 right_inv F := by ext u; simp only [liftAlternating_comp, liftAlternating_ιMulti, LinearMap.comp_id]
+
+
+noncomputable def ExteriorAlgebra.ιMulti_family {I : Type*} [LinearOrder I] (v : I → M) :
+{s : Finset I // Finset.card s = n} → ExteriorAlgebra R M := by
+  intro ⟨s, hs⟩
+  have e := Finset.orderIsoOfFin s hs 
+  exact ExteriorAlgebra.ιMulti R n (fun i => v (e i))
+
+noncomputable def ExteriorAlgebra.ιMulti_fixedDegree_family {I : Type*} [LinearOrder I] (v : I → M) :
+{s : Finset I // Finset.card s = n} → ExteriorAlgebra.GradedPiece R M n := by
+  intro ⟨s, hs⟩
+  have e := Finset.orderIsoOfFin s hs 
+  exact ExteriorAlgebra.ιMulti_fixedDegree R n (fun i => v (e i))
+
+lemma ExteriorAlgebra.ιMulti_family_coe {I : Type*} [LinearOrder I] (v : I → M) :
+ExteriorAlgebra.ιMulti_family R n v = (Submodule.subtype _) ∘ (ExteriorAlgebra.ιMulti_fixedDegree_family R n v) := by
+  ext s 
+  unfold ExteriorAlgebra.ιMulti_fixedDegree_family
+  simp only [Submodule.coeSubtype, Finset.coe_orderIsoOfFin_apply, Function.comp_apply, ιMulti_fixedDegree_apply]
+  rfl
+
+lemma ExteriorAlgebra.GradedPiece.span_of_span {I : Type*} [LinearOrder I] 
+{v : I → M} (hv : Submodule.span R (Set.range v) = ⊤) : 
+Submodule.span R (Set.range (ExteriorAlgebra.ιMulti_family R n v)) = ExteriorAlgebra.GradedPiece R M n := by
+  apply le_antisymm
+  . rw [Submodule.span_le, Set.range_subset_iff]
+    intro s 
+    unfold ExteriorAlgebra.ιMulti_family
+    simp only [Finset.coe_orderIsoOfFin_apply, SetLike.mem_coe]
+    apply (ExteriorAlgebra.ιMulti_range R n) 
+    simp only [Set.mem_range, exists_apply_eq_apply]
+  . change (LinearMap.range (ExteriorAlgebra.ι R : M →ₗ[R] ExteriorAlgebra R M) ^ n) ≤ _ 
+    rw [LinearMap.range_eq_map, ←hv, Submodule.map_span, Submodule.span_pow, Submodule.span_le]
+    intro u hu
+    rw [Set.mem_pow] at hu
+    obtain ⟨f, hf⟩ := hu
+    set g : Fin n → M := fun i => ExteriorAlgebra.ιInv (f i).1
+    have hfg : ∀ (i : Fin n), (f i).1 = ExteriorAlgebra.ι R (g i) := by
+      intro i
+      have h : (f i).1 ∈ LinearMap.range (ExteriorAlgebra.ι R (M := M)) := by 
+        have h' := (f i).2
+        simp only [Set.mem_image, Set.mem_range, exists_exists_eq_and] at h' 
+        obtain ⟨i, hi⟩ := h'
+        simp only [LinearMap.mem_range]
+        existsi v i 
+        exact hi 
+      rw [LinearMap.mem_range] at h 
+      obtain ⟨v, hv⟩ := h
+      simp only 
+      rw [←hv, ExteriorAlgebra.ι_inj]
+      erw [ExteriorAlgebra.ι_leftInverse] 
+    have hg : ∀ (i : Fin n), ∃ (j : I), g i = v j := by
+      intro i
+      have h := (f i).2
+      simp only [Set.mem_image, Set.mem_range, exists_exists_eq_and] at h  
+      obtain ⟨j, hj⟩ := h
+      rw [hfg i, ExteriorAlgebra.ι_inj] at hj
+      existsi j
+      rw [hj]
+    have heq : u = ExteriorAlgebra.ιMulti R n g := by
+      rw [ExteriorAlgebra.ιMulti_apply, ←hf]
+      apply congrArg; apply congrArg
+      ext i
+      exact hfg i 
+    rw [heq]
+    set α : Fin n → I := fun i => Classical.choose (hg i)
+    set αprop := fun i => Classical.choose_spec (hg i)
+    by_cases hinj : Function.Injective α 
+    . set s := Finset.image α Finset.univ  
+      set h : Fin n → s := fun i => ⟨α i, by simp only [Finset.mem_image, Finset.mem_univ, true_and,
+        exists_apply_eq_apply]⟩
+      have hbij : Function.Bijective h := by
+        constructor
+        . intro i j hij
+          rw [Subtype.mk.injEq] at hij 
+          exact hinj hij 
+        . intro ⟨i, hi⟩
+          rw [Finset.mem_image] at hi
+          obtain ⟨a, ha⟩ := hi
+          existsi a 
+          simp only [Subtype.mk.injEq]
+          exact ha.2
+      have hs : Finset.card s = n := by
+        suffices h : Fintype.card s = n
+        . rw [←h]; simp only [Finset.mem_image, Finset.mem_univ, true_and, Fintype.card_coe]
+        . rw [←(Fintype.card_of_bijective hbij)]
+          simp only [Fintype.card_fin]
+      set e := Finset.orderIsoOfFin s hs 
+      set g' : Fin n → M := fun i => v (e i)
+      have hg' : ExteriorAlgebra.ιMulti R n g' ∈ Submodule.span R (Set.range (ιMulti_family R n v)) := by
+        apply Submodule.subset_span
+        rw [Set.mem_range]
+        existsi ⟨s, hs⟩
+        unfold ExteriorAlgebra.ιMulti_family
+        simp only [Finset.coe_orderIsoOfFin_apply]
+      set σ : Equiv.Perm (Fin n) := (Equiv.ofBijective h hbij).trans e.toEquiv.symm 
+      have hgg' : g = g' ∘ σ := by
+        ext i 
+        rw [Function.comp_apply, Equiv.trans_apply]
+        change g i = v (e (_))
+        erw [Equiv.apply_symm_apply e.toEquiv (Equiv.ofBijective h hbij i)] 
+        simp only [Equiv.ofBijective_apply]
+        exact αprop i 
+      rw [hgg', AlternatingMap.map_perm]
+      exact Submodule.smul_mem _ _ hg' 
+    . change ¬(∀ (a b : Fin n), _) at hinj 
+      push_neg at hinj
+      obtain ⟨i, j, hij1, hij2⟩ := hinj 
+      have heq : g = Function.update g i (g j) := by
+        ext k 
+        by_cases hk : k = i 
+        . rw [Function.update_apply]
+          simp only [hk, ite_true]
+          change g i = g j 
+          rw [αprop i, αprop j]
+          change v (α i) = v (α j)
+          rw [hij1]
+        . simp only [ne_eq, hk, not_false_eq_true, Function.update_noteq] 
+      rw [heq, AlternatingMap.map_update_self _ _ hij2]
+      simp only [SetLike.mem_coe, Submodule.zero_mem]
+
+
+lemma ExteriorAlgebra.GradedPiece.span_of_span' {I : Type*} [LinearOrder I] 
+{v : I → M} (hv : Submodule.span R (Set.range v) = ⊤) : 
+Submodule.span R  (Set.range (ExteriorAlgebra.ιMulti_fixedDegree_family R n v)) = ⊤ := by
+  rw [eq_top_iff]
+  intro ⟨u, hu⟩ _ 
+  set hu' := hu
+  rw [←(ExteriorAlgebra.GradedPiece.span_of_span R n hv), ExteriorAlgebra.ιMulti_family_coe,
+    Set.range_comp, ←Submodule.map_span, Submodule.mem_map] at hu'
+  obtain ⟨v, hv, huv⟩ := hu'
+  have heq : ⟨u, hu⟩ = v := by
+    rw [←SetCoe.ext_iff]
+    simp only
+    simp only [Submodule.coeSubtype] at huv 
+    exact (Eq.symm huv)  
+  rw [heq]
+  exact hv 
+
+variable (M)
+
+noncomputable def ExteriorAlgebra.GradedPiece.toTensor : ExteriorAlgebra.GradedPiece R M n →ₗ[R]
+TensorPower R n M := ExteriorAlgebra.GradedPiece.liftAlternatingEquiv R n 
+(MultilinearMap.alternatization (PiTensorProduct.tprod R (s := fun (_ : Fin n) => M)))
+
+lemma ExteriorAlgebra.GradedPiece.toTensor_injective (hfree : Module.Free R M) :
+Function.Injective (ExteriorAlgebra.GradedPiece.toTensor R M n) := sorry 
+  
+
+variable {M}
+
+noncomputable def ExteriorAlgebra.GradedPiece.basis {I : Type*} [LinearOrder I] (b : Basis I R M) :
+Basis {s : Finset I // Finset.card s = n} R (ExteriorAlgebra.GradedPiece R M n) := by
+  apply Basis.mk (v := ExteriorAlgebra.ιMulti_fixedDegree_family R n b)
+  . sorry
+  . rw [ExteriorAlgebra.GradedPiece.span_of_span']
+    rw [Basis.span_eq]
+
 

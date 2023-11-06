@@ -330,4 +330,4 @@ lemma ActionGLIsSmooth : ContMDiff (ModelWithCorners.prod (modelWithCornersSelf 
 
 end SmoothMaps 
 
-end Grassmannian 
+end Grassmannian
