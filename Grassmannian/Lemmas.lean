@@ -2,6 +2,9 @@ import Mathlib.Tactic
 import Mathlib.LinearAlgebra.Basis
 import Mathlib.Analysis.Calculus.ContDiffDef
 import Mathlib.Geometry.Manifold.ContMDiff
+import Mathlib.LinearAlgebra.Basis
+import Mathlib.LinearAlgebra.PiTensorProduct
+
 
 
 
@@ -121,3 +124,41 @@ ContMDiff I I' n f ↔ ∀ (x : M), ContMDiffAt I I' n f x := by
       intro x
       apply ContMDiffAt.of_le (hdiff x) (le_refl _)
 
+
+lemma linearIndependent_of_dualFamily {ι : Type*} (R : Type*) {M : Type*} (v : ι → M) [CommSemiring R] 
+[AddCommMonoid M] [Module R M] (dv : ι → Module.Dual R M) 
+(h1 : ∀ (a : ι) (b : ι), a ≠ b → (dv a) (v b) = 0) (h2 : ∀ (a : ι), (dv a) (v a) = 1) :
+LinearIndependent R v := by
+  rw [linearIndependent_iff']
+  intro s g hrel i hi 
+  apply_fun (fun x => dv i x) at hrel 
+  rw [map_zero, map_sum] at hrel 
+  rw [←(Finset.sum_subset (s₁ := {i}) (f := fun j => (dv i) (g j • v j)) (Finset.singleton_subset_iff.mpr hi))] at hrel
+  . simp only [map_smulₛₗ, RingHom.id_apply, smul_eq_mul, Finset.sum_singleton, h2 i, mul_one] at hrel  
+    exact hrel 
+  . intro j _ hij 
+    simp only [Finset.mem_singleton] at hij  
+    rw [map_smul]
+    apply smul_eq_zero_of_right 
+    exact h1 i j (Ne.symm hij)
+
+
+#exit 
+
+noncomputable def Basis.piTensorProduct_aux {ι : Type*} (R : Type*) [CommSemiring R] 
+{M : ι → Type*} [(i : ι) → AddCommMonoid (M i)] [(i : ι) → Module R (M i)] 
+(α : ι → Type*) (b : (i : ι) → Basis (α i) R (M i)) : 
+((i : ι) → (α i)) → (PiTensorProduct R M) :=  
+fun f => PiTensorProduct.tprod R (fun (i : ι) => (b i) (f i))
+
+
+noncomputable def Basis.piTensorProduct {ι : Type*} (R : Type*) [CommRing R] 
+{M : ι → Type*} [(i : ι) → AddCommGroup (M i)] [(i : ι) → Module R (M i)] 
+(α : ι → Type*) (b : (i : ι) → Basis (α i) R (M i)) : 
+Basis ((i : ι) → (α i)) R (PiTensorProduct R M) := by 
+  apply Basis.mk (v := Basis.piTensorProduct_aux R α b)
+  . sorry
+  . intro x _ 
+    apply PiTensorProduct.induction_on' (C := fun z => z ∈ Submodule.span R (Set.range (Basis.piTensorProduct_aux R α b))) x
+    . intro r f 
+    . sorry  

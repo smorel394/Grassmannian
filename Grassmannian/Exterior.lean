@@ -2,7 +2,7 @@ import Mathlib.Tactic
 import Mathlib.LinearAlgebra.ExteriorAlgebra.Grading
 import Mathlib.LinearAlgebra.ExteriorAlgebra.OfAlternating
 import Mathlib.LinearAlgebra.TensorPower
-
+import Grassmannian.Lemmas 
 
 
 variable (R M N N' : Type*) [CommRing R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N] 
@@ -198,10 +198,8 @@ noncomputable def ExteriorAlgebra.ιMulti_family {I : Type*} [LinearOrder I] (v 
   exact ExteriorAlgebra.ιMulti R n (fun i => v (e i))
 
 noncomputable def ExteriorAlgebra.ιMulti_fixedDegree_family {I : Type*} [LinearOrder I] (v : I → M) :
-{s : Finset I // Finset.card s = n} → ExteriorAlgebra.GradedPiece R M n := by
-  intro ⟨s, hs⟩
-  have e := Finset.orderIsoOfFin s hs 
-  exact ExteriorAlgebra.ιMulti_fixedDegree R n (fun i => v (e i))
+{s : Finset I // Finset.card s = n} → ExteriorAlgebra.GradedPiece R M n := 
+fun ⟨s, hs⟩ => ExteriorAlgebra.ιMulti_fixedDegree R n (fun i => v (Finset.orderIsoOfFin s hs i))
 
 lemma ExteriorAlgebra.ιMulti_family_coe {I : Type*} [LinearOrder I] (v : I → M) :
 ExteriorAlgebra.ιMulti_family R n v = (Submodule.subtype _) ∘ (ExteriorAlgebra.ιMulti_fixedDegree_family R n v) := by
@@ -334,16 +332,125 @@ noncomputable def ExteriorAlgebra.GradedPiece.toTensor : ExteriorAlgebra.GradedP
 TensorPower R n M := ExteriorAlgebra.GradedPiece.liftAlternatingEquiv R n 
 (MultilinearMap.alternatization (PiTensorProduct.tprod R (s := fun (_ : Fin n) => M)))
 
-lemma ExteriorAlgebra.GradedPiece.toTensor_injective (hfree : Module.Free R M) :
-Function.Injective (ExteriorAlgebra.GradedPiece.toTensor R M n) := sorry 
-  
-
 variable {M}
+
+lemma ExteriorAlgebra.GradedPiece.toTensor_apply_ιMulti (v : Fin n → M) :
+ExteriorAlgebra.GradedPiece.toTensor R M n (ExteriorAlgebra.ιMulti_fixedDegree R n v) =
+Finset.sum Finset.univ (fun (σ : Equiv.Perm (Fin n)) => Equiv.Perm.sign σ • 
+(PiTensorProduct.tprod R (fun i => v (σ i)))) := by
+  unfold ExteriorAlgebra.GradedPiece.toTensor 
+  simp only [liftAlternatingEquiv_apply, liftAlternating_apply_ιMulti] 
+  rw [MultilinearMap.alternatization_apply]
+  simp only [MultilinearMap.domDomCongr_apply]
+
+lemma ExteriorAlgebra.GradedPiece.toTensor_apply_ιMulti_family {I : Type*} [LinearOrder I] (v : I → M) 
+{s : Finset I} (hs : Finset.card s = n) :
+ExteriorAlgebra.GradedPiece.toTensor R M n (ExteriorAlgebra.ιMulti_fixedDegree_family R n v ⟨s, hs⟩) =
+Finset.sum Finset.univ (fun (σ : Equiv.Perm (Fin n)) => Equiv.Perm.sign σ • 
+(PiTensorProduct.tprod R (fun i => v (Finset.orderIsoOfFin s hs (σ i))))) := by
+  unfold ExteriorAlgebra.ιMulti_fixedDegree_family
+  simp only [Finset.coe_orderIsoOfFin_apply]
+  rw [ExteriorAlgebra.GradedPiece.toTensor_apply_ιMulti]
+
+noncomputable def TensorPower.linearForm {I : Type*} [LinearOrder I] (b : Basis I R M)
+{s : Finset I} (hs : Finset.card s = n) : TensorPower R n M →ₗ[R] R := by
+  apply PiTensorProduct.lift.toFun 
+  exact MultilinearMap.compLinearMap (MultilinearMap.mkPiRing R (Fin n) 1) 
+    (fun i => b.coord (Finset.orderIsoOfFin s hs i))
+
+lemma TensorPower.linearForm_apply_tprod {I : Type*} [LinearOrder I] (b : Basis I R M)
+{s : Finset I} (hs : Finset.card s = n) (v : Fin n → M) :
+TensorPower.linearForm R n b hs (PiTensorProduct.tprod R v) = 
+Finset.prod Finset.univ (fun i => b.coord (Finset.orderIsoOfFin s hs i) (v i)) := by
+  unfold TensorPower.linearForm 
+  simp only [Finset.coe_orderIsoOfFin_apply, AddHom.toFun_eq_coe, LinearMap.coe_toAddHom, LinearEquiv.coe_coe,
+    PiTensorProduct.lift.tprod, MultilinearMap.compLinearMap_apply, Basis.coord_apply, MultilinearMap.mkPiRing_apply,
+    smul_eq_mul, _root_.mul_one]
+
+
+lemma TensorPower.linearForm_apply_diag {I : Type*} [LinearOrder I] (b : Basis I R M)
+{s : Finset I} (hs : Finset.card s = n) : 
+TensorPower.linearForm R n b hs (ExteriorAlgebra.GradedPiece.toTensor R M n
+(ExteriorAlgebra.ιMulti_fixedDegree_family R n b ⟨s, hs⟩)) = 1 := by
+  rw [ExteriorAlgebra.GradedPiece.toTensor_apply_ιMulti_family, map_sum]
+  have hzero : ∀ (σ : Equiv.Perm (Fin n)), σ ∈ Finset.univ → ¬σ ∈ ({Equiv.refl (Fin n)} : 
+    Finset (Equiv.Perm (Fin n))) → TensorPower.linearForm R n b hs 
+    (Equiv.Perm.sign σ • ⨂ₜ[R] (i : Fin n), b ((Finset.orderIsoOfFin s hs) (σ i))) = 0 := by
+    intro σ _ hσ
+    simp only [Finset.mem_singleton] at hσ 
+    erw [LinearMap.map_smul]
+    apply smul_eq_zero_of_right
+    rw [TensorPower.linearForm_apply_tprod]
+    have h : ∃ (i : Fin n), ¬ σ i = i := by
+      by_contra habs 
+      push_neg at habs 
+      apply hσ
+      ext i 
+      simp only [Equiv.refl_apply]
+      rw [habs i]
+    obtain ⟨i, hi⟩ := h  
+    apply Finset.prod_eq_zero (a := i) (Finset.mem_univ _)
+    rw [Basis.coord_apply, Basis.repr_self_apply]
+    simp only [Finset.coe_orderIsoOfFin_apply, OrderEmbedding.eq_iff_eq, ite_eq_right_iff]
+    simp only [hi, IsEmpty.forall_iff]
+  have heq := Finset.sum_subset (s₁ := {Equiv.refl (Fin n)}) (Finset.subset_univ _) hzero 
+  rw [←heq]
+  simp only [Finset.coe_orderIsoOfFin_apply, LinearMap.map_smul_of_tower, Finset.sum_singleton, Equiv.Perm.sign_refl,
+    Equiv.refl_apply, one_smul]
+  rw [TensorPower.linearForm_apply_tprod]
+  apply Finset.prod_eq_one 
+  intro i _ 
+  simp only [Finset.coe_orderIsoOfFin_apply, Basis.coord_apply, Basis.repr_self, Finsupp.single_eq_same]
+
+ 
+lemma TensorPower.linearForm_apply_nondiag_aux {I : Type*} [LinearOrder I] 
+{s t : Finset I} (hs : Finset.card s = n) (ht : Finset.card t = n) (hst : s ≠ t) (σ : Equiv.Perm (Fin n)) : 
+∃ (i : Fin n), (Finset.orderIsoOfFin s hs i).1 ≠ (Finset.orderIsoOfFin t ht (σ i)).1 := by 
+  by_contra habs
+  push_neg at habs
+  apply hst 
+  apply Finset.eq_of_subset_of_card_le 
+  . intro a has
+    set b := Finset.orderIsoOfFin t ht (σ ((Finset.orderIsoOfFin s hs).symm ⟨a, has⟩)) 
+    have heq : a = b.1 := by
+      rw [←habs]
+      simp only [OrderIso.apply_symm_apply]
+    rw [heq]
+    exact b.2
+  . rw [hs, ht]
+
+
+lemma TensorPower.linearForm_apply_nondiag {I : Type*} [LinearOrder I] (b : Basis I R M)
+{s t : Finset I} (hs : Finset.card s = n) (ht : Finset.card t = n) (hst : s ≠ t) : 
+TensorPower.linearForm R n b hs (ExteriorAlgebra.GradedPiece.toTensor R M n
+(ExteriorAlgebra.ιMulti_fixedDegree_family R n b ⟨t, ht⟩)) = 0 := by
+  rw [ExteriorAlgebra.GradedPiece.toTensor_apply_ιMulti_family, map_sum]
+  apply Finset.sum_eq_zero
+  intro σ _
+  erw [LinearMap.map_smul]
+  apply smul_eq_zero_of_right
+  rw [TensorPower.linearForm_apply_tprod]
+  obtain ⟨i, hi⟩ := TensorPower.linearForm_apply_nondiag_aux n hs ht hst σ 
+  apply Finset.prod_eq_zero (a := i) (Finset.mem_univ _) 
+  rw [Basis.coord_apply, Basis.repr_self_apply]
+  simp only [Finset.coe_orderIsoOfFin_apply, ne_eq] at hi  
+  simp only [Finset.coe_orderIsoOfFin_apply, Ne.symm hi, ite_false]
+
 
 noncomputable def ExteriorAlgebra.GradedPiece.basis {I : Type*} [LinearOrder I] (b : Basis I R M) :
 Basis {s : Finset I // Finset.card s = n} R (ExteriorAlgebra.GradedPiece R M n) := by
   apply Basis.mk (v := ExteriorAlgebra.ιMulti_fixedDegree_family R n b)
-  . sorry
+  . apply LinearIndependent.of_comp (ExteriorAlgebra.GradedPiece.toTensor R M n)
+    apply linearIndependent_of_dualFamily R _
+      (fun s => TensorPower.linearForm R n b s.2) 
+    . intro ⟨s, hs⟩ ⟨t, ht⟩ hst 
+      simp only [ne_eq, Subtype.mk.injEq] at hst   
+      simp only [Function.comp_apply]
+      apply TensorPower.linearForm_apply_nondiag
+      exact hst 
+    . intro ⟨s, hs⟩
+      simp only [Function.comp_apply]
+      apply TensorPower.linearForm_apply_diag 
   . rw [ExteriorAlgebra.GradedPiece.span_of_span']
     rw [Basis.span_eq]
 
