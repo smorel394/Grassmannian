@@ -143,22 +143,11 @@ LinearIndependent R v := by
     exact h1 i j (Ne.symm hij)
 
 
-#exit 
+/- These next two results would be nice to have but I don't need them.-/
+lemma Cardinal.le_of_map (α β : Type u) (f : α → β) [Infinite β] (hcard : ∀ (b :β), Cardinal.mk (f ⁻¹' {b}) ≤ Cardinal.mk β) :
+Cardinal.mk α ≤  Cardinal.mk β := sorry
 
-noncomputable def Basis.piTensorProduct_aux {ι : Type*} (R : Type*) [CommSemiring R] 
-{M : ι → Type*} [(i : ι) → AddCommMonoid (M i)] [(i : ι) → Module R (M i)] 
-(α : ι → Type*) (b : (i : ι) → Basis (α i) R (M i)) : 
-((i : ι) → (α i)) → (PiTensorProduct R M) :=  
-fun f => PiTensorProduct.tprod R (fun (i : ι) => (b i) (f i))
+lemma Cardinal.mk_finset_len_infinite (I : Type*) [Infinite I] {n : ℕ} (hn : n > 0) :
+Cardinal.mk {s : Finset I // Finset.card s = n} = Cardinal.mk α := by sorry 
 
 
-noncomputable def Basis.piTensorProduct {ι : Type*} (R : Type*) [CommRing R] 
-{M : ι → Type*} [(i : ι) → AddCommGroup (M i)] [(i : ι) → Module R (M i)] 
-(α : ι → Type*) (b : (i : ι) → Basis (α i) R (M i)) : 
-Basis ((i : ι) → (α i)) R (PiTensorProduct R M) := by 
-  apply Basis.mk (v := Basis.piTensorProduct_aux R α b)
-  . sorry
-  . intro x _ 
-    apply PiTensorProduct.induction_on' (C := fun z => z ∈ Submodule.span R (Set.range (Basis.piTensorProduct_aux R α b))) x
-    . intro r f 
-    . sorry  

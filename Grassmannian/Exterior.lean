@@ -3,6 +3,9 @@ import Mathlib.LinearAlgebra.ExteriorAlgebra.Grading
 import Mathlib.LinearAlgebra.ExteriorAlgebra.OfAlternating
 import Mathlib.LinearAlgebra.TensorPower
 import Grassmannian.Lemmas 
+import Mathlib.Order.Extension.Well
+import Mathlib.Data.Finite.Defs
+
 
 
 variable (R M N N' : Type*) [CommRing R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N] 
@@ -20,7 +23,10 @@ def ExteriorAlgebra.GradedPiece.Finite [Module.Finite R M]: Module.Finite R
   rw [←Module.finite_def]
   exact inferInstance 
 
+
 variable {R M N N'}
+
+
 
 def ExteriorAlgebra.GradedPiece.liftAlternating_aux : (AlternatingMap R M N (Fin n)) →ₗ[R] 
 ((i : ℕ) → AlternatingMap R M N (Fin i)) := by
@@ -454,4 +460,169 @@ Basis {s : Finset I // Finset.card s = n} R (ExteriorAlgebra.GradedPiece R M n) 
   . rw [ExteriorAlgebra.GradedPiece.span_of_span']
     rw [Basis.span_eq]
 
+
+lemma ExteriorAlgebra.GradedPiece.free (hfree : Module.Free R M) : Module.Free R
+(ExteriorAlgebra.GradedPiece R M n) := by
+  obtain ⟨I, b⟩ := (Classical.choice hfree.exists_basis)
+  letI := WellFounded.wellOrderExtension (emptyWf (α := I)).wf 
+  exact Module.Free.of_basis (ExteriorAlgebra.GradedPiece.basis R n b) 
+  
+variable [StrongRankCondition R]
+
+lemma ExteriorAlgebra.GradedPiece.finrank_finiteDimensional (hfree : Module.Free R M) 
+[Module.Finite R M] : 
+FiniteDimensional.finrank R (ExteriorAlgebra.GradedPiece R M n) = 
+Nat.choose (FiniteDimensional.finrank R M) n := by 
+  set I := hfree.ChooseBasisIndex 
+  set b := hfree.chooseBasis 
+  letI := WellFounded.wellOrderExtension (emptyWf (α := I)).wf 
+  set B :=  ExteriorAlgebra.GradedPiece.basis R n b 
+  rw [FiniteDimensional.finrank_eq_card_basis b, FiniteDimensional.finrank_eq_card_basis B,
+    Fintype.card_finset_len]
+  
+/- Not sure how useful that is. I certainly don't need it now.-/
+lemma ExteriorAlgebra.GradedPiece.finrank (hfree : Module.Free R M) (hnf : ¬ Module.Finite R M) : 
+n > 0 → FiniteDimensional.finrank R (ExteriorAlgebra.GradedPiece R M n) = 0 := by
+  set I := hfree.ChooseBasisIndex 
+  set b := hfree.chooseBasis 
+  letI := WellFounded.wellOrderExtension (emptyWf (α := I)).wf 
+  set B :=  ExteriorAlgebra.GradedPiece.basis R n b 
+  have h : FiniteDimensional.finrank R (ExteriorAlgebra.GradedPiece R M n) = 0 := by
+    letI := ExteriorAlgebra.GradedPiece.free R n hfree
+    apply finrank_eq_zero_of_basis_imp_false 
+    intro s Bs 
+    have heq := mk_eq_mk_of_basis B Bs 
+    simp only [Finset.coe_sort_coe, Cardinal.mk_fintype, Fintype.card_coe, Cardinal.lift_natCast,
+      Cardinal.lift_eq_nat_iff] at heq  
+    have hinf : Infinite {s : Finset I // Finset.card s = n} := sorry
+    rw [Cardinal.infinite_iff, heq] at hinf 
+    exact lt_irrefl _ (lt_of_lt_of_le (Cardinal.nat_lt_aleph0 (Finset.card s)) hinf) 
+  rw [h]; simp only [gt_iff_lt, implies_true]
+
+-- Functoriality
+
+variable {R}
+
+def ExteriorAlgebra.map (f : M →ₗ[R] N) : ExteriorAlgebra R M →ₐ[R] ExteriorAlgebra R N := 
+CliffordAlgebra.map {f with map_app' := by intro _; simp only [AddHom.toFun_eq_coe, 
+LinearMap.coe_toAddHom, QuadraticForm.zero_apply]}
+
+@[simp]
+theorem ExteriorAlgebra.map_comp_ι (f : M →ₗ[R] N) :
+LinearMap.comp (AlgHom.toLinearMap (ExteriorAlgebra.map f)) (ExteriorAlgebra.ι R) = 
+LinearMap.comp (ExteriorAlgebra.ι R) f := CliffordAlgebra.map_comp_ι _ 
+
+@[simp]
+theorem ExteriorAlgebra.map_apply_ι (f : M →ₗ[R] N) (m : M) :
+(ExteriorAlgebra.map f) ((ExteriorAlgebra.ι R) m) = (ExteriorAlgebra.ι R) (f m) := 
+CliffordAlgebra.map_apply_ι _ m 
+
+@[simp]
+theorem ExteriorAlgebra.map_apply_ιMulti (f : M →ₗ[R] N) (m : Fin n → M) :
+(ExteriorAlgebra.map f) ((ExteriorAlgebra.ιMulti R n) m) = (ExteriorAlgebra.ιMulti R n) (f ∘ m) := by
+  rw [ExteriorAlgebra.ιMulti_apply, ExteriorAlgebra.ιMulti_apply, map_list_prod]
+  simp only [List.map_ofFn, Function.comp_apply]
+  apply congrArg; apply congrArg 
+  ext i
+  simp only [Function.comp_apply, map_apply_ι]
+  
+
+@[simp]
+theorem ExteriorAlgebra.map_comp_ιMulti (f : M →ₗ[R] N) :
+(ExteriorAlgebra.map f).toLinearMap.compAlternatingMap (ExteriorAlgebra.ιMulti R n (M := M)) = 
+(ExteriorAlgebra.ιMulti R n (M := N)).compLinearMap f := by 
+  ext m 
+  simp only [LinearMap.compAlternatingMap_apply, AlgHom.toLinearMap_apply, map_apply_ιMulti, Function.comp_apply,
+    AlternatingMap.compLinearMap_apply] 
+  apply congrArg
+  ext i
+  simp only [Function.comp_apply]
+  
+
+@[simp]
+theorem ExteriorAlgebra.map_id :
+ExteriorAlgebra.map (LinearMap.id) = AlgHom.id R (ExteriorAlgebra R M) := 
+CliffordAlgebra.map_id 0 
+
+@[simp]
+theorem ExteriorAlgebra.map_comp_map (f : M →ₗ[R] N) (g : N →ₗ[R] N') :
+AlgHom.comp (ExteriorAlgebra.map g) (ExteriorAlgebra.map f) = ExteriorAlgebra.map (LinearMap.comp g f) := by
+  unfold ExteriorAlgebra.map 
+  rw [CliffordAlgebra.map_comp_map]
+  apply congrArg
+  ext m 
+  simp only [QuadraticForm.Isometry.comp_apply]
+  change g (f m) = (LinearMap.comp g f) m 
+  simp only [LinearMap.coe_comp, Function.comp_apply]
+  
+
+@[simp]
+theorem ExteriorAlgebra.ι_range_map_map (f : M →ₗ[R] N) :
+Submodule.map (AlgHom.toLinearMap (ExteriorAlgebra.map f)) (LinearMap.range (ExteriorAlgebra.ι R (M := M))) = 
+Submodule.map (ExteriorAlgebra.ι R) (LinearMap.range f) := 
+CliffordAlgebra.ι_range_map_map _ 
+
+
+def ExteriorAlgebra.GradedPiece.map (f : M →ₗ[R] N) : ExteriorAlgebra.GradedPiece R M n →ₗ[R]
+ExteriorAlgebra.GradedPiece R N n := by
+  refine LinearMap.restrict (AlgHom.toLinearMap (ExteriorAlgebra.map f)) ?_ 
+  intro x hx 
+  rw [←ExteriorAlgebra.ιMulti_span_range] at hx ⊢ 
+  have hx := Set.mem_image_of_mem (ExteriorAlgebra.map f) hx 
+  rw [←Submodule.map_coe, LinearMap.map_span, ←Set.range_comp] at hx
+  erw [←(LinearMap.coe_compAlternatingMap (ExteriorAlgebra.map f).toLinearMap (ExteriorAlgebra.ιMulti R n))] at hx 
+  rw [ExteriorAlgebra.map_comp_ιMulti, AlternatingMap.coe_compLinearMap] at hx 
+  refine Set.mem_of_mem_of_subset hx ?_ 
+  apply Submodule.span_mono 
+  apply Set.range_comp_subset_range 
+
+
+
+
+@[simp]
+theorem ExteriorAlgebra.GradedPiece.map_apply_ιMulti (f : M →ₗ[R] N) (m : Fin n → M) :
+(ExteriorAlgebra.GradedPiece.map n f) ((ExteriorAlgebra.ιMulti_fixedDegree R n) m) = 
+(ExteriorAlgebra.ιMulti_fixedDegree R n) (f ∘ m) := by
+  unfold ExteriorAlgebra.GradedPiece.map
+  rw [LinearMap.restrict_apply]
+  rw [←SetCoe.ext_iff]
+  simp only 
+  rw [ExteriorAlgebra.ιMulti_fixedDegree_apply]
+  erw [ExteriorAlgebra.map_apply_ιMulti, ExteriorAlgebra.ιMulti_fixedDegree_apply]
+  
+
+
+@[simp]
+theorem ExteriorAlgebra.GradedPiece.map_comp_ιMulti (f : M →ₗ[R] N) :
+(ExteriorAlgebra.GradedPiece.map n f).compAlternatingMap (ExteriorAlgebra.ιMulti_fixedDegree R n (M := M)) = 
+(ExteriorAlgebra.ιMulti_fixedDegree R n (M := N)).compLinearMap f := by 
+  unfold ExteriorAlgebra.GradedPiece.map
+  ext m
+  simp only [LinearMap.compAlternatingMap_apply, LinearMap.restrict_coe_apply, ιMulti_fixedDegree_apply,
+    AlgHom.toLinearMap_apply, ExteriorAlgebra.map_apply_ιMulti, Function.comp_apply, AlternatingMap.compLinearMap_apply]
+  apply congrArg 
+  ext i 
+  simp only [Function.comp_apply]
+  
+
+@[simp]
+theorem ExteriorAlgebra.GradedPiece.map_id :
+ExteriorAlgebra.GradedPiece.map n (LinearMap.id) = LinearMap.id (R := R) (M := ExteriorAlgebra.GradedPiece R M n) := by
+  unfold ExteriorAlgebra.GradedPiece.map
+  ext m 
+  simp only [map_id, AlgHom.toLinearMap_id, LinearMap.compAlternatingMap_apply, LinearMap.restrict_coe_apply,
+    ιMulti_fixedDegree_apply, LinearMap.id_coe, id_eq]
+  rw [ExteriorAlgebra.map_id]
+  simp only [AlgHom.toLinearMap_id, LinearMap.id_coe, id_eq]
+
+
+@[simp]
+theorem ExteriorAlgebra.GradedPiece.map_comp_map (f : M →ₗ[R] N) (g : N →ₗ[R] N') :
+LinearMap.comp (ExteriorAlgebra.GradedPiece.map n g) (ExteriorAlgebra.GradedPiece.map n f) = 
+ExteriorAlgebra.GradedPiece.map n (LinearMap.comp g f) := by 
+  unfold ExteriorAlgebra.GradedPiece.map
+  ext m
+  simp only [LinearMap.compAlternatingMap_apply, LinearMap.coe_comp, Function.comp_apply, LinearMap.restrict_coe_apply,
+    ιMulti_fixedDegree_apply, AlgHom.toLinearMap_apply, ExteriorAlgebra.map_apply_ιMulti]
+  rw [Function.comp.assoc]
 
