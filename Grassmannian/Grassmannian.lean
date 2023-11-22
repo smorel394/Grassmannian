@@ -357,74 +357,120 @@ versions with the equivalence.-/
 
 variable {V}
 
-def Grassmannian.mk (v : Fin r → V) (hv : LinearIndependent K v) : Grassmannian K V r :=
-QGrassmannianEquivGrassmannian K V (Fintype.card_fin r) (QGrassmannian.mk K v hv)
+def Grassmannian.mkI (v : I → V) (hv : LinearIndependent K v) : Grassmannian K V r :=
+QGrassmannianEquivGrassmannian K V hrI (QGrassmannian.mk K v hv)
 
-def Grassmannian.mk' (v : { v : Fin r → V // LinearIndependent K v }) : Grassmannian K V r :=
-QGrassmannianEquivGrassmannian K V (Fintype.card_fin r) (QGrassmannian.mk' K v)
+def Grassmannian.mkI' (v : { v : I → V // LinearIndependent K v }) : Grassmannian K V r :=
+QGrassmannianEquivGrassmannian K V hrI (QGrassmannian.mk' K v)
   
+
+abbrev Grassmannian.mk (v : Fin r → V) (hv : LinearIndependent K v) : Grassmannian K V r :=
+Grassmannian.mkI K (Fintype.card_fin r) v hv 
+
+abbrev Grassmannian.mk' (v : { v : Fin r → V // LinearIndependent K v }) : Grassmannian K V r :=
+Grassmannian.mkI' K (Fintype.card_fin r) v
+
+
+@[simp]
+theorem Grassmannian.mkI'_eq_mkI (v : { v : I → V // LinearIndependent K v}) : 
+Grassmannian.mkI' K hrI v = Grassmannian.mkI K hrI v.1 v.2 := rfl
 
 @[simp]
 theorem Grassmannian.mk'_eq_mk (v : { v : Fin r → V // LinearIndependent K v}) : 
 Grassmannian.mk' K v = Grassmannian.mk K v.1 v.2 := rfl
 
-lemma Grassmannian.mk_apply (v : Fin r → V) (hv : LinearIndependent K v) :
-(Grassmannian.mk K v hv).1 = Submodule.span K (Set.range v) := by
-  unfold Grassmannian.mk 
-  erw [QGrassmannianToGrassmannian_apply' K V (Fintype.card_fin r)]
+lemma Grassmannian.mkI_apply (v : I → V) (hv : LinearIndependent K v) :
+(Grassmannian.mkI K hrI v hv).1 = Submodule.span K (Set.range v) := by
+  unfold Grassmannian.mkI 
+  erw [QGrassmannianToGrassmannian_apply' K V hrI]
 
+lemma Grassmannian.mk_apply (v : Fin r → V) (hv : LinearIndependent K v) :
+(Grassmannian.mk K v hv).1 = Submodule.span K (Set.range v) := 
+Grassmannian.mkI_apply K (Fintype.card_fin r) v hv 
+ 
 variable {K}
 
+def Grassmannian.repI (x : Grassmannian K V r) : I → V :=
+QGrassmannian.rep ((QGrassmannianEquivGrassmannian K V hrI).symm x)
+
 def Grassmannian.rep (x : Grassmannian K V r) : Fin r → V :=
-QGrassmannian.rep ((QGrassmannianEquivGrassmannian K V (Fintype.card_fin r)).symm x)
+Grassmannian.repI (Fintype.card_fin r) x 
+
+lemma Grassmannian.repI_linearIndependent (x : Grassmannian K V r) :
+LinearIndependent K (Grassmannian.repI hrI x) := 
+QGrassmannian.rep_linearIndependent _ 
 
 lemma Grassmannian.rep_linearIndependent (x : Grassmannian K V r) :
 LinearIndependent K (Grassmannian.rep x) := 
 QGrassmannian.rep_linearIndependent _ 
 
-
 @[simp]
-theorem Grassmannian.mk_rep (x : Grassmannian K V r) : 
-Grassmannian.mk K (Grassmannian.rep x) (Grassmannian.rep_linearIndependent x) = x := by 
-  unfold Grassmannian.mk Grassmannian.rep 
+theorem Grassmannian.mkI_repI (x : Grassmannian K V r) : 
+Grassmannian.mkI K hrI (Grassmannian.repI hrI x) (Grassmannian.repI_linearIndependent hrI x) = x := by 
+  unfold Grassmannian.mkI Grassmannian.repI 
   rw [QGrassmannian.mk_rep]
   simp only [Equiv.apply_symm_apply]
 
 
+@[simp]
+theorem Grassmannian.mk_rep (x : Grassmannian K V r) : 
+Grassmannian.mk K (Grassmannian.rep x) (Grassmannian.rep_linearIndependent x) = x := 
+Grassmannian.mkI_repI (Fintype.card_fin r) x
+
+
 variable (K)
 
+lemma Grassmannian.mkI_eq_mkI_iff_span (v w : I → V) (hv : LinearIndependent K v)
+(hw : LinearIndependent K w) :
+Grassmannian.mkI K hrI v hv = Grassmannian.mkI K hrI w hw ↔ 
+Submodule.span K (Set.range v) = Submodule.span K (Set.range w) := by 
+  unfold Grassmannian.mkI
+  simp only [EmbeddingLike.apply_eq_iff_eq]
+  rw [QGrassmannian.mk_eq_mk_iff_span]
 
 lemma Grassmannian.mk_eq_mk_iff_span (v w : Fin r → V) (hv : LinearIndependent K v)
 (hw : LinearIndependent K w) :
 Grassmannian.mk K v hv = Grassmannian.mk K w hw ↔ 
-Submodule.span K (Set.range v) = Submodule.span K (Set.range w) := by 
-  unfold Grassmannian.mk
-  simp only [EmbeddingLike.apply_eq_iff_eq]
-  rw [QGrassmannian.mk_eq_mk_iff_span]
+Submodule.span K (Set.range v) = Submodule.span K (Set.range w) := 
+Grassmannian.mkI_eq_mkI_iff_span K (Fintype.card_fin r) v w hv hw
 
+lemma Grassmannian.mkI_eq_mkI_iff_matrixAction (v w : I → V) (hv : LinearIndependent K v)
+(hw : LinearIndependent K w) :
+Grassmannian.mkI K hrI v hv = Grassmannian.mkI K hrI w hw ↔ ∃ (f : (I → K) ≃ₗ[K] (I → K)), 
+w = MatrixAction K f v := by 
+  unfold Grassmannian.mkI
+  simp only [EmbeddingLike.apply_eq_iff_eq]
+  rw [QGrassmannian.mk_eq_mk_iff_matrixAction]
 
 lemma Grassmannian.mk_eq_mk_iff_matrixAction (v w : Fin r → V) (hv : LinearIndependent K v)
 (hw : LinearIndependent K w) :
 Grassmannian.mk K v hv = Grassmannian.mk K w hw ↔ ∃ (f : (Fin r → K) ≃ₗ[K] (Fin r → K)), 
-w = MatrixAction K f v := by 
-  unfold Grassmannian.mk
-  simp only [EmbeddingLike.apply_eq_iff_eq]
-  rw [QGrassmannian.mk_eq_mk_iff_matrixAction]
+w = MatrixAction K f v := 
+Grassmannian.mkI_eq_mkI_iff_matrixAction K (Fintype.card_fin r) v w hv hw
 
+lemma Grassmannian.mkI_eq_mkI_iff_matrixAction' (v w : I → V) (hv : LinearIndependent K v)
+(hw : LinearIndependent K w) :
+Grassmannian.mkI K hrI v hv = Grassmannian.mkI K hrI w hw ↔ ∃ (f : (I → K) →ₗ[K] (I → K)), 
+w = MatrixAction K f v := by
+  unfold Grassmannian.mkI
+  simp only [EmbeddingLike.apply_eq_iff_eq]
+  rw [QGrassmannian.mk_eq_mk_iff_matrixAction']
 
 lemma Grassmannian.mk_eq_mk_iff_matrixAction' (v w : Fin r → V) (hv : LinearIndependent K v)
 (hw : LinearIndependent K w) :
 Grassmannian.mk K v hv = Grassmannian.mk K w hw ↔ ∃ (f : (Fin r → K) →ₗ[K] (Fin r → K)), 
-w = MatrixAction K f v := by
-  unfold Grassmannian.mk
-  simp only [EmbeddingLike.apply_eq_iff_eq]
-  rw [QGrassmannian.mk_eq_mk_iff_matrixAction']
+w = MatrixAction K f v := 
+Grassmannian.mkI_eq_mkI_iff_matrixAction' K (Fintype.card_fin r) v w hv hw
 
-lemma Grassmannian.exists_matrixAction_eq_mk_rep (v : Fin r → V) (hv : LinearIndependent K v) :
-∃ (f : (Fin r → K) ≃ₗ[K] (Fin r → K)), MatrixAction K f v = Grassmannian.rep (Grassmannian.mk K v hv) := by
-  unfold Grassmannian.rep Grassmannian.mk
+lemma Grassmannian.exists_matrixAction_eq_mkI_repI (v : I → V) (hv : LinearIndependent K v) :
+∃ (f : (I → K) ≃ₗ[K] (I → K)), MatrixAction K f v = Grassmannian.repI hrI (Grassmannian.mkI K hrI v hv) := by
+  unfold Grassmannian.repI Grassmannian.mkI
   simp only [Equiv.symm_apply_apply]
   exact QGrassmannian.exists_matrixAction_eq_mk_rep K v hv 
+
+lemma Grassmannian.exists_matrixAction_eq_mk_rep (v : Fin r → V) (hv : LinearIndependent K v) :
+∃ (f : (Fin r → K) ≃ₗ[K] (Fin r → K)), MatrixAction K f v = Grassmannian.rep (Grassmannian.mk K v hv) := 
+Grassmannian.exists_matrixAction_eq_mkI_repI K (Fintype.card_fin r) v hv 
 
 /- The case r = 1.-/
 variable (V)
@@ -451,7 +497,7 @@ Equiv.trans (Projectivization.equivSubmodule K V) (Grassmannian.equivSubmodule K
 variable {K V}
 variable (r I) {V' : Type*} [AddCommGroup V'] [Module K V']
 
-/-- An injective semilinear map of vector spaces induces a map on QGrassmannians. -/
+/-- An injective linear map of vector spaces induces a map on QGrassmannians. -/
 -- Less general than the version for projective spaces because LinearIndependent.map' requires the two rings to be equal.
 def QGrassmannian.map (f : V →ₗ[K] V') (hf : Function.Injective f) : QGrassmannian K V I → QGrassmannian K V' I :=
   Quotient.map' (fun v => ⟨f ∘ v.1, by simp only; rw [←LinearMap.ker_eq_bot] at hf; exact LinearIndependent.map' v.2 f hf⟩)

@@ -1,17 +1,37 @@
 import Mathlib.Tactic
-import Mathlib.Geometry.Manifold.Instances.UnitsOfNormedAlgebra
-import Mathlib.Analysis.NormedSpace.OperatorNorm
-import Mathlib.Topology.Algebra.Module.FiniteDimension
-import Mathlib.Analysis.LocallyConvex.BalancedCoreHull
-import Mathlib.Analysis.LocallyConvex.BalancedCoreHull
-import Mathlib.Data.Real.Basic
-import Mathlib.LinearAlgebra.ExteriorAlgebra.Grading
-
-
+--import Mathlib.Geometry.Manifold.Instances.UnitsOfNormedAlgebra
+--import Mathlib.Analysis.NormedSpace.OperatorNorm
+--import Mathlib.Topology.Algebra.Module.FiniteDimension
+--import Mathlib.Analysis.LocallyConvex.BalancedCoreHull
+--import Mathlib.Analysis.LocallyConvex.BalancedCoreHull
+--import Mathlib.Data.Real.Basic
+import Grassmannian.SmoothMaps  
+import Grassmannian.Exterior
 
 
 open Classical
-noncomputable section 
+--noncomputable section 
+
+
+section test1
+
+variable (R M : Type*) [Field R] [AddCommGroup M] [Module R M] (r n : ℕ)
+
+--def Grassmannian : Set (Submodule R M) := {W : Submodule R M | FiniteDimensional R W ∧ FiniteDimensional.finrank R W = r}
+
+def PluckerMap (x : Grassmannian R M r) : Grassmannian R (ExteriorAlgebra R M) (Nat.choose r n) := by
+  set W := (0 : Submodule R (ExteriorAlgebra R M))
+  refine ⟨W, ?_⟩
+
+end test1 
+
+universe u v w 
+variable (R : Type u) (M : Type v) (N : Type w) [Field R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N]
+
+
+#exit 
+
+section test2
 
 universe u v
 
@@ -28,6 +48,7 @@ def FG : FiniteDimensional 𝕜 (LinearMap.range (ExteriorAlgebra.ι 𝕜 : E �
   rw [←Module.finite_def]
   exact inferInstance 
 
+end test2
 
 
 

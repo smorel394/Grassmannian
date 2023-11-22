@@ -3,6 +3,7 @@ import Mathlib.Geometry.Manifold.ContMDiff
 import Grassmannian.Manifold
 import Grassmannian.contMDiff_openEmbedding 
 import Mathlib.Geometry.Manifold.Instances.UnitsOfNormedAlgebra
+import Mathlib.Geometry.Manifold.Diffeomorph
 
 
 open Classical 
@@ -11,11 +12,109 @@ namespace Grassmannian
 
 section SmoothMaps 
 
-variable {𝕜 E F : Type*} [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedSpace 𝕜 E] 
-[NormedAddCommGroup F] [NormedSpace 𝕜 F] [CompleteSpace 𝕜] {r : ℕ} [SeparatingDual 𝕜 E]
-[Nonempty (Grassmannian 𝕜 E r)]
+variable (𝕜 E F : Type*) [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedSpace 𝕜 E] 
+[NormedAddCommGroup F] [NormedSpace 𝕜 F] [CompleteSpace 𝕜] [SeparatingDual 𝕜 E]
+{I : Type*} [Fintype I] [Nonempty {v : I → E // LinearIndependent 𝕜 v}]
 
-variable (𝕜 E r)
+
+
+/- First we relate Grassmannian.mkI' and Grassmannian.mk', using an arbitrary bijection between I and Fin r.-/
+
+variable {J : Type*} [Fintype J] [Nonempty {v : J → E // LinearIndependent 𝕜 v}]
+
+noncomputable def ContinuousLinearEquivIJ (e : I ≃ J) : (I → E) ≃L[𝕜] (J → E) := 
+{(LinearEquiv.piCongrLeft' 𝕜 (fun _ => E) e)
+ with
+ continuous_toFun := by continuity 
+ continuous_invFun := by continuity}
+
+lemma ContinuousLinearEquivIJ_apply (e : I ≃ J) (v : I → E) :
+ContinuousLinearEquivIJ 𝕜 E e v = v ∘ e.invFun := by
+  unfold ContinuousLinearEquivIJ
+  ext j 
+  simp only [LinearEquiv.invFun_eq_symm, LinearEquiv.mk_coe, Equiv.invFun_as_coe, Function.comp_apply]
+  change (LinearEquiv.piCongrLeft' 𝕜 (fun _ => E) e) v j = _ 
+  rw [LinearEquiv.piCongrLeft'_apply]
+
+noncomputable def FunctionLinearIndependentIJ (e : I ≃ J) : {v : I → E // LinearIndependent 𝕜 v} →
+{v : J → E // LinearIndependent 𝕜 v} := by
+  apply Set.MapsTo.restrict (ContinuousLinearEquivIJ 𝕜 E e) 
+  intro v hv 
+  change LinearIndependent 𝕜 _ 
+  rw [ContinuousLinearEquivIJ_apply, Equiv.invFun_as_coe, linearIndependent_equiv]
+  exact hv
+
+lemma FunctionLinearIndependentIJ_apply (e : I ≃ J) (v : {v : I → E // LinearIndependent 𝕜 v}) :
+(FunctionLinearIndependentIJ 𝕜 E e v).1 = v.1 ∘ e.invFun := by
+  unfold FunctionLinearIndependentIJ
+  simp only [Set.MapsTo.val_restrict_apply, Equiv.invFun_as_coe]
+  rw [ContinuousLinearEquivIJ_apply, Equiv.invFun_as_coe]
+
+noncomputable def EquivLinearIndependentIJ (e : I ≃ J) : {v : I → E // LinearIndependent 𝕜 v} ≃
+{v : J → E // LinearIndependent 𝕜 v} := 
+{toFun := FunctionLinearIndependentIJ 𝕜 E e
+ invFun := FunctionLinearIndependentIJ 𝕜 E e.symm
+ left_inv := by
+   intro v 
+   rw [←SetCoe.ext_iff, FunctionLinearIndependentIJ_apply, FunctionLinearIndependentIJ_apply]
+   ext i 
+   simp only [Equiv.invFun_as_coe, Equiv.symm_symm, Function.comp_apply, Equiv.symm_apply_apply]
+ right_inv := by
+   intro v 
+   rw [←SetCoe.ext_iff, FunctionLinearIndependentIJ_apply, FunctionLinearIndependentIJ_apply]
+   ext i 
+   simp only [Equiv.invFun_as_coe, Equiv.symm_symm, Function.comp_apply, Equiv.apply_symm_apply]
+}
+
+lemma EquivLinearIndependentIJ_apply (e : I ≃ J) (v : {v :I → E // LinearIndependent 𝕜 v}) :
+(EquivLinearIndependentIJ 𝕜 E e v).1 = v.1 ∘ e.invFun := by
+  unfold EquivLinearIndependentIJ
+  change (FunctionLinearIndependentIJ 𝕜 E e v).1 = _ 
+  rw [FunctionLinearIndependentIJ_apply]
+
+lemma SmoothFunctionLinearIndependentIJ (e : I ≃ J) :
+ContMDiff (modelWithCornersSelf 𝕜 (I → E)) (modelWithCornersSelf 𝕜 (J → E)) ⊤ 
+(FunctionLinearIndependentIJ 𝕜 E e) := by
+  rw [ContMDiff_vs_openEmbedding]
+  have heq : (fun v => v.1) ∘ (FunctionLinearIndependentIJ 𝕜 E e) = (ContinuousLinearEquivIJ 𝕜 E e) ∘ (fun v => v.1) := by
+    apply funext 
+    intro v 
+    simp only [Function.comp_apply]
+    rw [FunctionLinearIndependentIJ_apply, ContinuousLinearEquivIJ_apply]
+  rw [heq]
+  apply ContMDiff.comp (E' := I → E) (I' := modelWithCornersSelf 𝕜 (I → E))
+  . rw [contMDiff_iff_contDiff]
+    apply ContinuousLinearEquiv.contDiff 
+  . apply contMDiffOpenEmbedding 
+
+noncomputable def DiffeomorphLinearIndependentIJ (e : I ≃ J) : Diffeomorph (modelWithCornersSelf 𝕜 (I → E)) 
+(modelWithCornersSelf 𝕜 (J → E)) {v : I → E // LinearIndependent 𝕜 v} {v : J → E // LinearIndependent 𝕜 v} ⊤ := 
+{EquivLinearIndependentIJ 𝕜 E e with
+ contMDiff_toFun := SmoothFunctionLinearIndependentIJ 𝕜 E e
+ contMDiff_invFun := SmoothFunctionLinearIndependentIJ 𝕜 E e.symm}
+
+lemma DiffeomorphLinearIndependentIJ_apply (e : I ≃ J) (v : {v :I → E // LinearIndependent 𝕜 v}) :
+(DiffeomorphLinearIndependentIJ 𝕜 E e v).1 = v.1 ∘ e.invFun := by
+  unfold DiffeomorphLinearIndependentIJ
+  change (EquivLinearIndependentIJ 𝕜 E e v).1 = _ 
+  rw [EquivLinearIndependentIJ_apply]
+
+
+variable {r : ℕ} (hrI : Fintype.card I = r)
+ [Nonempty (Grassmannian 𝕜 E r)] 
+
+instance instNonemptyGrassmannianLift : Nonempty {v : Fin r → E // LinearIndependent 𝕜 v} := 
+(NonemptyGrassmannian_iff' 𝕜 E r).mpr inferInstance 
+
+lemma Grassmannian.mk'_vs_mkI' : Grassmannian.mkI' 𝕜 hrI = Grassmannian.mk' 𝕜 ∘ 
+(DiffeomorphLinearIndependentIJ 𝕜 E (Fintype.equivFinOfCardEq hrI)) := by
+  apply funext 
+  intro v 
+  rw [Function.comp_apply, ←SetCoe.ext_iff]
+  rw [Grassmannian.mkI'_eq_mkI, Grassmannian.mkI_apply]
+  rw [Grassmannian.mk'_eq_mk, Grassmannian.mk_apply]
+  rw [DiffeomorphLinearIndependentIJ_apply]
+  rw [Equiv.invFun_as_coe, EquivLike.range_comp]
 
 
 lemma Smooth.quotientMap : 
@@ -58,11 +157,24 @@ ContMDiff (modelWithCornersSelf 𝕜 (Fin r → E)) (E' := (Fin r → 𝕜) →L
   . simp only [mk'_eq_mk, ContinuousLinearMap.coe_comp', ContinuousLinearEquiv.coe_coe, Set.top_eq_univ,
     Set.preimage_univ, Set.subset_univ]
 
+/- A slight generalization where we take the quotient from {v : I → E // LinearIndependent 𝕜 v} instead, under
+the assumption that Fintype.card I = r. This is sometimes useful when we don't have a natural order on I.-/
+
+
+lemma Smooth.quotientMapI : 
+ContMDiff (modelWithCornersSelf 𝕜 (I → E)) (E' := (Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) 
+(M' := Grassmannian 𝕜 E r) (ModelGrassmannian 𝕜 (ModelSpace 𝕜 E r) r) ⊤
+(Grassmannian.mkI' 𝕜 hrI) := by 
+  rw [Grassmannian.mk'_vs_mkI']
+  rw [Diffeomorph.contMDiff_comp_diffeomorph_iff]
+  apply Smooth.quotientMap 
+  simp only 
+
 
 /- If f is map from the Grassmannian to a manifold such that f ∘ Grassmannian.mk' is smooth, we prove that f is
 smooth. This is useful to construct smooth maps from the Grassmannian.-/
 
-variable {𝕜 E r}
+variable {𝕜 E}
 
 
 lemma ChoiceOfChartForLift (v : {v : Fin r → E // LinearIndependent 𝕜 v}) :
@@ -104,7 +216,7 @@ lemma SmoothAt.mapFromGrassmannian {F : Type*} [NormedAddCommGroup F] [NormedSpa
   . apply ContMDiffAt.comp (E' := (Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) (I' := modelWithCornersSelf 𝕜
       ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)))
     . rw [ContMDiffAT_vs_openEmbedding (modelWithCornersSelf 𝕜 ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r))) 
-        (LinearIndependentToAll 𝕜 E r) (InverseChartLift_codRestrict φ)]
+        (LinearIndependentToAll 𝕜 E (Fin r)) (InverseChartLift_codRestrict φ)]
       have heq : (fun v => v.1) ∘ InverseChartLift_codRestrict φ = InverseChartLift φ := by
         apply funext; intro f
         unfold InverseChartLift_codRestrict
@@ -128,6 +240,20 @@ lemma SmoothAt.mapFromGrassmannian {F : Type*} [NormedAddCommGroup F] [NormedSpa
         exact hφ.1 
 
 
+lemma SmoothAt.mapFromGrassmannianI {F : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {H : Type*}
+[TopologicalSpace H] {Im : ModelWithCorners 𝕜 F H} {M : Type*} [TopologicalSpace M] [ChartedSpace H M]
+[SmoothManifoldWithCorners Im M] {n : ℕ∞} {f : Grassmannian 𝕜 E r → M} (v : {v : I → E // LinearIndependent 𝕜 v})
+(hf : ContMDiffAt (modelWithCornersSelf 𝕜 (I → E)) Im n (f ∘ (Grassmannian.mkI' 𝕜 hrI) : 
+{v : I → E // LinearIndependent 𝕜 v} → M) v) :
+@ContMDiffAt 𝕜 _ ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) _ _ ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) _ 
+(ModelGrassmannian 𝕜 (ModelSpace 𝕜 E r) r) (Grassmannian 𝕜 E r) _ _ F _ _ H _ Im M _ _ n f 
+(Grassmannian.mkI' 𝕜 hrI v):= by 
+  rw [Grassmannian.mk'_vs_mkI', ←Function.comp.assoc, Diffeomorph.contMDiffAt_comp_diffeomorph_iff] at hf
+  rw [Grassmannian.mk'_vs_mkI']
+  exact SmoothAt.mapFromGrassmannian _ hf 
+  simp only [le_top] 
+  
+
 lemma Smooth.mapFromGrassmannian {F : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {H : Type*}
 [TopologicalSpace H] {I : ModelWithCorners 𝕜 F H} {M : Type*} [TopologicalSpace M] [ChartedSpace H M]
 [SmoothManifoldWithCorners I M] {n : ℕ∞} {f : Grassmannian 𝕜 E r → M} 
@@ -140,6 +266,17 @@ lemma Smooth.mapFromGrassmannian {F : Type*} [NormedAddCommGroup F] [NormedSpace
   erw [←(Grassmannian.mk'_eq_mk 𝕜)]
   apply SmoothAt.mapFromGrassmannian (⟨Grassmannian.rep x, Grassmannian.rep_linearIndependent x⟩ :
     {v : Fin r → E // LinearIndependent 𝕜 v}) (hf _)
+
+
+lemma Smooth.mapFromGrassmannianI {F : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] {H : Type*}
+[TopologicalSpace H] {Im : ModelWithCorners 𝕜 F H} {M : Type*} [TopologicalSpace M] [ChartedSpace H M]
+[SmoothManifoldWithCorners Im M] {n : ℕ∞} {f : Grassmannian 𝕜 E r → M} 
+(hf : ContMDiff (modelWithCornersSelf 𝕜 (I → E)) Im n (f ∘ (Grassmannian.mkI' 𝕜 hrI))) :
+@ContMDiff 𝕜 _ ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) _ _ ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) _ 
+(ModelGrassmannian 𝕜 (ModelSpace 𝕜 E r) r) (Grassmannian 𝕜 E r) _ _ F _ _ H _ Im M _ _ n f := by 
+  rw [Grassmannian.mk'_vs_mkI', ←Function.comp.assoc, Diffeomorph.contMDiff_comp_diffeomorph_iff] at hf
+  exact Smooth.mapFromGrassmannian hf 
+  simp only [le_top] 
 
 
 lemma SmoothAt.mapFromProductGrassmannian {F G : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] 
@@ -185,7 +322,7 @@ ContMDiffAt (ModelWithCorners.prod I' (ModelGrassmannian 𝕜 (ModelSpace 𝕜 E
     . apply ContMDiffAt.comp (E' := (Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)) (I' := modelWithCornersSelf 𝕜
       ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r)))
       . rw [ContMDiffAT_vs_openEmbedding (modelWithCornersSelf 𝕜 ((Fin r → 𝕜) →L[𝕜] (ModelSpace 𝕜 E r))) 
-          (LinearIndependentToAll 𝕜 E r) (InverseChartLift_codRestrict φ)]
+          (LinearIndependentToAll 𝕜 E (Fin r)) (InverseChartLift_codRestrict φ)]
         have heq : (fun v => v.1) ∘ InverseChartLift_codRestrict φ = InverseChartLift φ := by
           apply funext; intro f
           unfold InverseChartLift_codRestrict
@@ -208,6 +345,19 @@ ContMDiffAt (ModelWithCorners.prod I' (ModelGrassmannian 𝕜 (ModelSpace 𝕜 E
           simp only  
           exact hφ.1 
 
+/- Not too hard to prove, but is it needed ?
+lemma SmoothAt.mapFromProductGrassmannianI {F G : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] 
+[NormedAddCommGroup G] [NormedSpace 𝕜 G] {H H' : Type*} [TopologicalSpace H] [TopologicalSpace H']
+{Im : ModelWithCorners 𝕜 F H} {I' : ModelWithCorners 𝕜 G H'} {M N : Type*} [TopologicalSpace M] 
+[ChartedSpace H M] [SmoothManifoldWithCorners Im M] [TopologicalSpace N] [ChartedSpace H' N]
+[SmoothManifoldWithCorners I' N] {n : ℕ∞}
+{f : N × Grassmannian 𝕜 E r → M}  (v : {v : I → E // LinearIndependent 𝕜 v}) (y : N)
+(hf : ContMDiffAt (ModelWithCorners.prod I' (modelWithCornersSelf 𝕜 (I → E))) Im n 
+(f ∘ (Prod.map (fun x => x) (Grassmannian.mkI' 𝕜 hrI))) (⟨y, v⟩ : N × {v : I → E // LinearIndependent 𝕜 v}))  :
+ContMDiffAt (ModelWithCorners.prod I' (ModelGrassmannian 𝕜 (ModelSpace 𝕜 E r) r)) Im n f 
+⟨y, Grassmannian.mkI' 𝕜 hrI v⟩ := by 
+  sorry
+-/
 
 lemma Smooth.mapFromProductGrassmannian {F G : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] 
 [NormedAddCommGroup G] [NormedSpace 𝕜 G] {H H' : Type*} [TopologicalSpace H] [TopologicalSpace H']

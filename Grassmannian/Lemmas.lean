@@ -144,10 +144,11 @@ LinearIndependent R v := by
 
 
 /- These next two results would be nice to have but I don't need them.-/
+/-
 lemma Cardinal.le_of_map (α β : Type u) (f : α → β) [Infinite β] (hcard : ∀ (b :β), Cardinal.mk (f ⁻¹' {b}) ≤ Cardinal.mk β) :
 Cardinal.mk α ≤  Cardinal.mk β := sorry
 
 lemma Cardinal.mk_finset_len_infinite (I : Type*) [Infinite I] {n : ℕ} (hn : n > 0) :
 Cardinal.mk {s : Finset I // Finset.card s = n} = Cardinal.mk α := by sorry 
-
+-/
 

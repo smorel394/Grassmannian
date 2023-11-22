@@ -5,10 +5,15 @@ import Mathlib.LinearAlgebra.TensorPower
 import Grassmannian.Lemmas 
 import Mathlib.Order.Extension.Well
 import Mathlib.Data.Finite.Defs
+import Mathlib.Algebra.Module.Injective
 
 
 
-variable (R M N N' : Type*) [CommRing R] [AddCommGroup M] [Module R M] [AddCommGroup N] [Module R N] 
+variable (R M N N' : Type*)
+
+--variable  (R : Type u₁) (M : Type u₂) (N : Type u₃) (N' : Type u₄) 
+variable [CommRing R] [AddCommGroup M] 
+  [Module R M] [AddCommGroup N] [Module R N] 
   [AddCommGroup N'] [Module R N'] (n : ℕ)
 
 abbrev ExteriorAlgebra.GradedPiece := (LinearMap.range (ExteriorAlgebra.ι R : M →ₗ[R] ExteriorAlgebra R M) ^ n) 
@@ -480,8 +485,10 @@ Nat.choose (FiniteDimensional.finrank R M) n := by
   rw [FiniteDimensional.finrank_eq_card_basis b, FiniteDimensional.finrank_eq_card_basis B,
     Fintype.card_finset_len]
   
+-- TODO: Freeness, finite-dimensionality and dimension for the whole exterior algebra.
+
 /- Not sure how useful that is. I certainly don't need it now.-/
-lemma ExteriorAlgebra.GradedPiece.finrank (hfree : Module.Free R M) (hnf : ¬ Module.Finite R M) : 
+/-lemma ExteriorAlgebra.GradedPiece.finrank (hfree : Module.Free R M) (hnf : ¬ Module.Finite R M) : 
 n > 0 → FiniteDimensional.finrank R (ExteriorAlgebra.GradedPiece R M n) = 0 := by
   set I := hfree.ChooseBasisIndex 
   set b := hfree.chooseBasis 
@@ -498,6 +505,7 @@ n > 0 → FiniteDimensional.finrank R (ExteriorAlgebra.GradedPiece R M n) = 0 :=
     rw [Cardinal.infinite_iff, heq] at hinf 
     exact lt_irrefl _ (lt_of_lt_of_le (Cardinal.nat_lt_aleph0 (Finset.card s)) hinf) 
   rw [h]; simp only [gt_iff_lt, implies_true]
+-/
 
 -- Functoriality
 
@@ -625,4 +633,59 @@ ExteriorAlgebra.GradedPiece.map n (LinearMap.comp g f) := by
   simp only [LinearMap.compAlternatingMap_apply, LinearMap.coe_comp, Function.comp_apply, LinearMap.restrict_coe_apply,
     ιMulti_fixedDegree_apply, AlgHom.toLinearMap_apply, ExteriorAlgebra.map_apply_ιMulti]
   rw [Function.comp.assoc]
+
+
+lemma ExteriorAlgebra.map_injective {f : M →ₗ[R] N} (hf : ∃ (g : N →ₗ[R] M), g.comp f = LinearMap.id) :
+Function.Injective (ExteriorAlgebra.map f) := by
+  obtain ⟨g, hgf⟩ := hf 
+  apply Function.RightInverse.injective (g := ExteriorAlgebra.map g)
+  intro m 
+  rw [←AlgHom.comp_apply, ExteriorAlgebra.map_comp_map, hgf, ExteriorAlgebra.map_id]
+  simp only [AlgHom.coe_id, id_eq]
+
+lemma ExteriorAlgebra.map_surjective {f : M →ₗ[R] N} (hf : ∃ (g : N →ₗ[R] M), f.comp g = LinearMap.id) : 
+Function.Surjective (ExteriorAlgebra.map f) := by
+  obtain ⟨g, hfg⟩ := hf 
+  apply Function.LeftInverse.surjective (g := ExteriorAlgebra.map g)
+  intro m 
+  rw [←AlgHom.comp_apply, ExteriorAlgebra.map_comp_map, hfg, ExteriorAlgebra.map_id]
+  simp only [AlgHom.coe_id, id_eq]
+
+
+lemma ExteriorAlgebra.GradedPiece.map_injective {f : M →ₗ[R] N} (hf : ∃ (g : N →ₗ[R] M), g.comp f = LinearMap.id) :
+Function.Injective (ExteriorAlgebra.GradedPiece.map n f) := by
+  obtain ⟨g, hgf⟩ := hf 
+  apply Function.RightInverse.injective (g := ExteriorAlgebra.GradedPiece.map n g)
+  intro m 
+  rw [←LinearMap.comp_apply, ExteriorAlgebra.GradedPiece.map_comp_map, hgf, ExteriorAlgebra.GradedPiece.map_id]
+  simp only [LinearMap.id_coe, id_eq]
+
+lemma ExteriorAlgebra.GradedPiece.map_surjective {f : M →ₗ[R] N} (hf : ∃ (g : N →ₗ[R] M), f.comp g = LinearMap.id) :
+Function.Surjective (ExteriorAlgebra.GradedPiece.map n f) := by
+  obtain ⟨g, hgf⟩ := hf 
+  apply Function.LeftInverse.surjective (g := ExteriorAlgebra.GradedPiece.map n g)
+  intro m 
+  rw [←LinearMap.comp_apply, ExteriorAlgebra.GradedPiece.map_comp_map, hgf, ExteriorAlgebra.GradedPiece.map_id]
+  simp only [LinearMap.id_coe, id_eq]
+
+
+variable {R M N N' : Type*} [Field R] [AddCommGroup M] 
+  [Module R M] [AddCommGroup N] [Module R N] 
+  [AddCommGroup N'] [Module R N'] (n : ℕ)
+
+lemma ExteriorAlgebra.map_injective_field {f : M →ₗ[R] N} (hf : LinearMap.ker f = ⊥) :
+Function.Injective (ExteriorAlgebra.map f) := 
+ExteriorAlgebra.map_injective (LinearMap.exists_leftInverse_of_injective f hf)
+
+lemma ExteriorAlgebra.map_surjective_field {f : M →ₗ[R] N} (hf : LinearMap.range f = ⊤) : 
+Function.Surjective (ExteriorAlgebra.map f) := 
+ExteriorAlgebra.map_surjective (LinearMap.exists_rightInverse_of_surjective f hf)
+
+lemma ExteriorAlgebra.GradedPiece.map_injective_field {f : M →ₗ[R] N} (hf : LinearMap.ker f = ⊥) :
+Function.Injective (ExteriorAlgebra.GradedPiece.map n f) := 
+ExteriorAlgebra.GradedPiece.map_injective n (LinearMap.exists_leftInverse_of_injective f hf)
+
+lemma ExteriorAlgebra.GradedPiece.map_surjective_field {f : M →ₗ[R] N} (hf : LinearMap.range f = ⊤) : 
+Function.Surjective (ExteriorAlgebra.GradedPiece.map n f) := 
+ExteriorAlgebra.GradedPiece.map_surjective n (LinearMap.exists_rightInverse_of_surjective f hf)
 

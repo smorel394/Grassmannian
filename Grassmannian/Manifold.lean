@@ -7,13 +7,79 @@ open Classical
 
 namespace Grassmannian
 
+
+section ManifoldLinearIndependent
+
+/- Smooth manifold structure on {v : I → E // LinearIndependent 𝕜 v}, if I is a Fintype, under the assumption
+that this type is not empty. If we have a nonempty instance on {v : I → E // LinearIndependent 𝕜 v}, we make this
+into an instance. This is automatic if card(I) = r and the corresponding Grassmannian is nonempty. If I = Fin r,
+and if we have a Nonempty instance on the Grassmannian, we can put a Nonempty instance on the set of linearly 
+independent vectors by the following code :-/
+
+/-instance instNonemptyGrassmannianLift : Nonempty {v : Fin r → E // LinearIndependent 𝕜 v} := 
+(NonemptyGrassmannian_iff' 𝕜 E r).mpr inferInstance -/
+
+
+variable (𝕜 E : Type*) [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedSpace 𝕜 E] 
+(I : Type*) [Fintype I] [CompleteSpace 𝕜] 
+
+
+def LinearIndependentToAll : OpenEmbedding (fun v : {v : I → E // LinearIndependent 𝕜 v} => (v.1 : I → E)) := 
+{
+  induced := by tauto
+  inj := by intro u v; rw [SetCoe.ext_iff]; simp only [imp_self]
+  open_range := by simp only [Subtype.range_coe_subtype, Set.setOf_mem_eq]
+                   exact isOpen_setOf_linearIndependent 
+} 
+
+variable [Nonempty {v : I → E // LinearIndependent 𝕜 v}]
+
+lemma LinearIndependentToAll.inverse {v : I → E} (hv : LinearIndependent 𝕜 v) :
+v = (OpenEmbedding.toLocalHomeomorph (fun v => v.1) (LinearIndependentToAll 𝕜 E I)).symm v := by 
+  have heq : v = (fun v => v.1) (⟨v, hv⟩ : {v : I → E // LinearIndependent 𝕜 v}) := by simp only 
+  nth_rewrite 2 [heq]
+  nth_rewrite 2 [←(OpenEmbedding.toLocalHomeomorph_apply _ (LinearIndependentToAll 𝕜 E I))]
+  rw [LocalHomeomorph.left_inv]
+  tauto 
+
+variable {𝕜 E I}
+
+noncomputable instance instChartedSpaceLinearIndependent : ChartedSpace (I → E) 
+{v : I → E // LinearIndependent 𝕜 v} := 
+(LinearIndependentToAll 𝕜 E I).singletonChartedSpace 
+
+
+lemma LinearIndependent.chartAt (v : {v : I → E // LinearIndependent 𝕜 v}) : 
+instChartedSpaceLinearIndependent.chartAt v = OpenEmbedding.toLocalHomeomorph (fun v => v.1) 
+(LinearIndependentToAll 𝕜 E I) := by tauto 
+
+
+lemma LinearIndependent.chartAt.target (v : {v : I → E // LinearIndependent 𝕜 v}) : 
+LocalEquiv.target (LocalHomeomorph.toLocalEquiv (instChartedSpaceLinearIndependent.2 v)) = 
+{v : I → E // LinearIndependent 𝕜 v} := by 
+  rw [LinearIndependent.chartAt, OpenEmbedding.toLocalHomeomorph_target]
+  simp only [ne_eq, Set.coe_setOf, Set.mem_setOf_eq, Subtype.range_coe_subtype]
+    
+
+lemma LinearIndependent.chartAt.inverse (v : {v : I → E // LinearIndependent 𝕜 v}) 
+{w : I → E} (hw : LinearIndependent 𝕜 w) :
+w = (instChartedSpaceLinearIndependent.chartAt v).symm w := by 
+  rw [LinearIndependent.chartAt]
+  exact LinearIndependentToAll.inverse 𝕜 E I hw 
+
+instance : SmoothManifoldWithCorners (modelWithCornersSelf 𝕜 (I → E)) {v : I → E // LinearIndependent 𝕜 v} :=
+(LinearIndependentToAll 𝕜 E I).singleton_smoothManifoldWithCorners (modelWithCornersSelf 𝕜 (I → E))
+
+
+end ManifoldLinearIndependent
+
 section ChartedSpace 
 
 variable {𝕜 E F U : Type*} [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedSpace 𝕜 E] 
-[NormedAddCommGroup U] [NormedSpace 𝕜 U] [NormedAddCommGroup F] [NormedSpace 𝕜 F] [CompleteSpace 𝕜] {r : ℕ}
-(ε : E ≃L[𝕜] (Fin r → 𝕜) × U)
+[NormedAddCommGroup U] [NormedSpace 𝕜 U] [NormedAddCommGroup F] [NormedSpace 𝕜 F] [CompleteSpace 𝕜] 
+(r : ℕ) (ε : E ≃L[𝕜] (Fin r → 𝕜) × U)
 
-variable (𝕜 E U r)
+variable (𝕜 E U)
 
 /-class MySpecialEquiv  :=
   (myEquiv : E ≃L[𝕜] (Fin r → 𝕜) × U)-/
@@ -201,58 +267,9 @@ smoothManifoldWithCorners_of_contDiffOn (ModelGrassmannian 𝕜 (ModelSpace 𝕜
        apply ChangeOfChartSmooth
 )
 
-
-/- Smooth manifold structure on {v : Fin r → E // LinearIndependent 𝕜 v}, under the same hypotheses. First we put a
-Nonempty instance on that type.-/
-
-instance instNonemptyGrassmannianLift : Nonempty {v : Fin r → E // LinearIndependent 𝕜 v} := 
-(NonemptyGrassmannian_iff' 𝕜 E r).mpr inferInstance 
-
-variable (𝕜 E r)
-
-def LinearIndependentToAll : OpenEmbedding (fun v : {v : Fin r → E // LinearIndependent 𝕜 v} => (v.1 : Fin r → E)) := 
-{
-  induced := by tauto
-  inj := by intro u v; rw [SetCoe.ext_iff]; simp only [imp_self]
-  open_range := by simp only [Subtype.range_coe_subtype, Set.setOf_mem_eq]
-                   exact isOpen_setOf_linearIndependent 
-} 
-
-lemma LinearIndependentToAll.inverse {v : Fin r → E} (hv : LinearIndependent 𝕜 v) :
-v = (OpenEmbedding.toLocalHomeomorph (fun v => v.1) (LinearIndependentToAll 𝕜 E r)).symm v := by 
-  have heq : v = (fun v => v.1) (⟨v, hv⟩ : {v : Fin r → E // LinearIndependent 𝕜 v}) := by simp only 
-  nth_rewrite 2 [heq]
-  nth_rewrite 2 [←(OpenEmbedding.toLocalHomeomorph_apply _ (LinearIndependentToAll 𝕜 E r))]
-  rw [LocalHomeomorph.left_inv]
-  tauto 
-
-variable {𝕜 E r}
-
-noncomputable instance instChartedSpaceLinearIndependent : ChartedSpace (Fin r → E) 
-{v : Fin r → E // LinearIndependent 𝕜 v} := 
-(LinearIndependentToAll 𝕜 E r).singletonChartedSpace 
+ 
 
 
-lemma LinearIndependent.chartAt (v : {v : Fin r → E // LinearIndependent 𝕜 v}) : 
-instChartedSpaceLinearIndependent.chartAt v = OpenEmbedding.toLocalHomeomorph (fun v => v.1) 
-(LinearIndependentToAll 𝕜 E r) := by tauto 
-
-
-lemma LinearIndependent.chartAt.target (v : {v : Fin r → E // LinearIndependent 𝕜 v}) : 
-LocalEquiv.target (LocalHomeomorph.toLocalEquiv (instChartedSpaceLinearIndependent.2 v)) = 
-{v : Fin r → E // LinearIndependent 𝕜 v} := by 
-  rw [LinearIndependent.chartAt, OpenEmbedding.toLocalHomeomorph_target]
-  simp only [ne_eq, Set.coe_setOf, Set.mem_setOf_eq, Subtype.range_coe_subtype]
-    
-
-lemma LinearIndependent.chartAt.inverse (v : {v : Fin r → E // LinearIndependent 𝕜 v}) 
-{w : Fin r → E} (hw : LinearIndependent 𝕜 w) :
-w = (instChartedSpaceLinearIndependent.chartAt v).symm w := by 
-  rw [LinearIndependent.chartAt]
-  exact LinearIndependentToAll.inverse 𝕜 E r hw 
-
-instance : SmoothManifoldWithCorners (modelWithCornersSelf 𝕜 (Fin r → E)) {v : Fin r → E // LinearIndependent 𝕜 v} :=
-(LinearIndependentToAll 𝕜 E r).singleton_smoothManifoldWithCorners (modelWithCornersSelf 𝕜 (Fin r → E))
 
 
 end Manifold
